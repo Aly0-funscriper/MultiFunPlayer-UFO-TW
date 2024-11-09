@@ -1,4 +1,4 @@
-﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Emit;
@@ -277,7 +277,7 @@ internal static class PluginCompiler
 
     private static void LoadPluginReferences(FileInfo pluginFile, string pluginSource, PluginAssemblyLoadContext context, List<MetadataReference> references)
     {
-        foreach (var match in ReferenceRegex.Matches(pluginSource).NotNull().Where(m => m.Success))
+        foreach (var match in ReferenceRegex.Matches(pluginSource).Where(m => m.Success))
         {
             var reference = match.Groups["value"].Value;
             var added = TryAddByName(reference)
