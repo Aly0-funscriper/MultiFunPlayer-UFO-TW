@@ -1,4 +1,4 @@
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Emit;
@@ -10,6 +10,7 @@ using StyletIoC;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using System.Text;
@@ -80,12 +81,14 @@ internal static class PluginCompiler
     private static IViewManager ViewManager { get; set; }
 
     private static IReadOnlyCollection<MetadataReference> _referenceCache;
-    private static IReadOnlyCollection<MetadataReference> ReferenceCache
+    private static unsafe IReadOnlyCollection<MetadataReference> ReferenceCache
     {
         get
         {
             _referenceCache ??= [.. AppDomain.CurrentDomain.GetAssemblies()
-                .Select(a => !string.IsNullOrWhiteSpace(a.Location) ? AssemblyMetadata.CreateFromFile(a.Location).GetReference(filePath: a.Location) : null)
+                .Select(a => a.TryGetRawMetadata(out var blob, out var length)
+                    ? AssemblyMetadata.Create(ModuleMetadata.CreateFromMetadata((nint)blob, length)).GetReference(filePath: a.Location)
+                    : null)
                 .NotNull()];
 
             return _referenceCache;
@@ -288,13 +291,17 @@ internal static class PluginCompiler
                 Logger.Warn("Failed to load assembly \"{0}\" for plugin \"{1}\"", reference, pluginFile.Name);
         }
 
-        bool TryAddByPath(string path) => File.Exists(path) && TryAddReference(() => context.LoadAndGetReferenceFromAssemblyPath(path));
-        bool TryAddByName(string assemblyName) => TryAddReference(() => context.LoadAndGetReferenceFromAssemblyName(new AssemblyName(assemblyName)));
+        bool TryAddByPath(string path) => File.Exists(path) && TryAddReference(path, () => context.LoadAndGetReferenceFromAssemblyPath(path));
+        bool TryAddByName(string assemblyName) => TryAddReference(assemblyName, () => context.LoadAndGetReferenceFromAssemblyName(new AssemblyName(assemblyName)));
 
-        bool TryAddReference(Func<MetadataReference> referenceFactory)
+        bool TryAddReference(string reference, Func<MetadataReference> referenceFactory)
         {
             try { references.Add(referenceFactory()); }
-            catch { return false; }
+            catch (Exception e)
+            {
+                Logger.Trace(e, "Failed to get reference to assembly \"{0}\" for plugin \"{1}\"", reference, pluginFile.Name);
+                return false;
+            }
 
             return true;
         }
@@ -316,9 +323,13 @@ internal sealed class PluginAssemblyLoadContext() : AssemblyLoadContext(isCollec
     public MetadataReference LoadAndGetReferenceFromAssemblyPath(string path) => GetReference(LoadFromAssemblyPath(path));
     public MetadataReference LoadAndGetReferenceFromAssemblyName(AssemblyName assemblyName) => GetReference(LoadFromAssemblyName(assemblyName));
 
-    private PortableExecutableReference GetReference(Assembly assembly)
+    private unsafe PortableExecutableReference GetReference(Assembly assembly)
     {
-        var assemblyMetadata = AssemblyMetadata.CreateFromFile(assembly.Location);
+        if (!assembly.TryGetRawMetadata(out var blob, out var length))
+            throw new BadImageFormatException();
+
+        var moduleMetadata = ModuleMetadata.CreateFromMetadata((nint)blob, length);
+        var assemblyMetadata = AssemblyMetadata.Create(moduleMetadata);
         _assemblyMetadata.Add(assemblyMetadata);
         return assemblyMetadata.GetReference(filePath: assembly.Location);
     }
