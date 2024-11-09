@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 using MultiFunPlayer.Common;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
@@ -6,7 +6,6 @@ using Newtonsoft.Json.Linq;
 using Stylet;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -152,19 +151,23 @@ internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IEv
 
             long GetValueLong(IntPtr hWnd, PlayerCommand command)
             {
+                const int WM_USER = 0x0400;
+
                 Logger.Trace("Reading \"{0}\" from {1}", command, Name);
-                return SendMessage(hWnd, 0x0400 /* WM_USER */, (UIntPtr)command, 0);
+                return SendMessage(hWnd, WM_USER, (UIntPtr)command, 0);
             }
 
             async Task<string> GetValueStringAsync(IntPtr hWnd, PlayerCommand command, CancellationToken token)
             {
+                const int WM_USER = 0x0400;
+
                 Logger.Trace("Reading \"{0}\" from {1}", command, Name);
                 var completionSource = new TaskCompletionSource<string>();
 
                 try
                 {
                     hwndSource.AddHook(MessageSink);
-                    SendMessage(hWnd, 0x0400 /* WM_USER */, (UIntPtr)command, hwndSource.Handle);
+                    SendMessage(hWnd, WM_USER, (UIntPtr)command, hwndSource.Handle);
 
                     await using var _ = token.Register(() => completionSource.SetCanceled(token));
                     return await completionSource.Task;
@@ -205,6 +208,9 @@ internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IEv
 
     private async Task WriteAsync(Process process, CancellationToken token)
     {
+        const int WM_USER = 0x0400;
+        const int WM_COPYDATA = 0x004a;
+
         try
         {
             var window = process.MainWindowHandle;
@@ -226,7 +232,7 @@ internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IEv
         void SetValueLong(IntPtr hWnd, PlayerCommand command, long value)
         {
             Logger.Debug("Writing \"{0}({1})\" to {2}", command, value, Name);
-            SendMessage(hWnd, 0x0400 /* WM_USER */, (UIntPtr)command, checked((IntPtr)value));
+            SendMessage(hWnd, WM_USER, (UIntPtr)command, checked((IntPtr)value));
         }
 
         void SetValueString(IntPtr hWnd, PlayerCommand command, string value, Encoding encoding)
@@ -254,7 +260,7 @@ internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IEv
                 unmanagedData = Marshal.AllocCoTaskMem(Marshal.SizeOf<COPYDATASTRUCT>());
                 Marshal.StructureToPtr(managedData, unmanagedData, false);
 
-                SendMessage(hWnd, 0x004a /* WM_COPYDATA */, UIntPtr.Zero, unmanagedData);
+                SendMessage(hWnd, WM_COPYDATA, UIntPtr.Zero, unmanagedData);
             }
             finally
             {
