@@ -1,4 +1,4 @@
-using Microsoft.Win32;
+﻿using Microsoft.Win32;
 using MultiFunPlayer.Common;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
@@ -245,16 +245,16 @@ internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IEv
             try
             {
                 var managedBytes = encoding.GetBytes(value ?? string.Empty);
+                var byteCount = managedBytes.Length;
 
-                unmanagedBytes = Marshal.AllocCoTaskMem(managedBytes.Length + 1);
-                Marshal.Copy(managedBytes, 0, unmanagedBytes, managedBytes.Length);
-                Marshal.WriteByte(unmanagedBytes, managedBytes.Length, 0);
+                unmanagedBytes = Marshal.AllocCoTaskMem(byteCount);
+                Marshal.Copy(managedBytes, 0, unmanagedBytes, byteCount);
 
                 var managedData = new COPYDATASTRUCT
                 {
                     dwData = (IntPtr)command,
                     lpData = unmanagedBytes,
-                    cbData = managedBytes.Length + 1
+                    cbData = byteCount
                 };
 
                 unmanagedData = Marshal.AllocCoTaskMem(Marshal.SizeOf<COPYDATASTRUCT>());
