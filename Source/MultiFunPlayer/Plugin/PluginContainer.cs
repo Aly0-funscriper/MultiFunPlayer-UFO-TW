@@ -195,7 +195,8 @@ internal sealed class PluginContainer(FileInfo pluginFile) : PropertyChangedBase
         if (_compilationResult == null || _compilationResult.Settings == null)
             return;
 
-        var settingsPath = $"Plugins\\{Path.GetFileNameWithoutExtension(PluginFile.Name)}.config.json";
+        var settingsFileName = $"{Path.GetFileNameWithoutExtension(PluginFile.Name)}.config.json";
+        var settingsPath = Path.Join(PluginFile.DirectoryName, settingsFileName);
         var settings = SettingsHelper.ReadOrEmpty(settingsPath);
 
         try
