@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using MultiFunPlayer.Settings;
 using MultiFunPlayer.Shortcut;
 using Newtonsoft.Json;
@@ -222,8 +222,6 @@ internal sealed class PluginContainer(FileInfo pluginFile) : PropertyChangedBase
     {
         if (AutoStartEnabled)
             Start();
-        else
-            Compile();
     }
 
     private void Dispose(bool disposing)
