@@ -1,9 +1,11 @@
 ﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Settings;
 using MultiFunPlayer.Shortcut;
+using Newtonsoft.Json;
 using NLog;
 using Stylet;
 using System.IO;
+using System.Runtime.Serialization;
 using System.Windows;
 
 namespace MultiFunPlayer.Plugin;
@@ -19,6 +21,7 @@ internal enum PluginState
     RanToCompletion,
 }
 
+[JsonObject(MemberSerialization.OptIn)]
 internal sealed class PluginContainer(FileInfo pluginFile) : PropertyChangedBase, IDisposable
 {
     private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
@@ -26,6 +29,8 @@ internal sealed class PluginContainer(FileInfo pluginFile) : PropertyChangedBase
     private PluginCompilationResult _compilationResult;
     private CancellationTokenSource _cancellationSource;
     private Thread _thread;
+
+    [JsonProperty] public bool AutoStartEnabled { get; set; } = false;
 
     public FileInfo PluginFile { get; } = pluginFile;
     public Exception Exception { get; private set; }
@@ -185,7 +190,7 @@ internal sealed class PluginContainer(FileInfo pluginFile) : PropertyChangedBase
         s.UnregisterAction($"Plugin::{Name}::Stop");
     }
 
-    public void HandleSettings(SettingsAction action)
+    private void HandleSettings(SettingsAction action)
     {
         if (_compilationResult == null || _compilationResult.Settings == null)
             return;
@@ -204,6 +209,21 @@ internal sealed class PluginContainer(FileInfo pluginFile) : PropertyChangedBase
 
         if (action == SettingsAction.Saving && settings.HasValues)
             SettingsHelper.Write(settings, settingsPath);
+    }
+
+    [OnSerialized]
+    internal void OnSerializedMethod(StreamingContext context)
+    {
+        HandleSettings(SettingsAction.Saving);
+    }
+
+    [OnDeserialized]
+    internal void OnDeserializedMethod(StreamingContext context)
+    {
+        if (AutoStartEnabled)
+            Start();
+        else
+            Compile();
     }
 
     private void Dispose(bool disposing)

@@ -137,6 +137,7 @@
                                             Width="30"
                                             Height="30"
                                             Padding="0"
+                                            material:ButtonAssist.CornerRadius="0"
                                             Click="{s:Action Start}"
                                             IsEnabled="{Binding Value.CanStart}"
                                             ToolTip="Start">
@@ -148,6 +149,7 @@
                                             Width="30"
                                             Height="30"
                                             Padding="0"
+                                            material:ButtonAssist.CornerRadius="0"
                                             Click="{s:Action Stop}"
                                             IsEnabled="{Binding Value.CanStop}"
                                             ToolTip="Stop">
@@ -159,6 +161,7 @@
                                             Width="30"
                                             Height="30"
                                             Padding="0"
+                                            material:ButtonAssist.CornerRadius="0"
                                             Click="{s:Action Compile}"
                                             IsEnabled="{Binding Value.CanCompile}"
                                             ToolTip="Compile">
@@ -170,6 +173,7 @@
                                             Width="30"
                                             Height="30"
                                             Padding="0"
+                                            material:ButtonAssist.CornerRadius="0"
                                             Command="{x:Static material:DialogHost.OpenDialogCommand}"
                                             ToolTip="Settings"
                                             Visibility="{Binding Value.SettingsView, Converter={StaticResource NullVisibilityConverter}}">
@@ -199,6 +203,26 @@
                                             </Grid>
                                         </Button.CommandParameter>
                                     </Button>
+
+                                    <ToggleButton DockPanel.Dock="Right"
+                                                  Style="{StaticResource MaterialDesignToolBarToggleButton}"
+                                                  Width="30"
+                                                  Height="30"
+                                                  Padding="0"
+                                                  material:RippleAssist.Feedback="{DynamicResource PrimaryHueMidBrush}"
+                                                  Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                                  IsChecked="{Binding Value.AutoStartEnabled}"
+                                                  ToolTip="Auto-start">
+                                        <material:PackIcon Width="18"
+                                                           Height="18"
+                                                           Kind="AutoStart"
+                                                           Opacity=".38"/>
+                                        <material:ToggleButtonAssist.OnContent>
+                                            <material:PackIcon Width="18"
+                                                               Height="18"
+                                                               Kind="AutoStart"/>
+                                        </material:ToggleButtonAssist.OnContent>
+                                    </ToggleButton>
                                 </DockPanel>
                             </material:Card>
                         </DataTemplate>

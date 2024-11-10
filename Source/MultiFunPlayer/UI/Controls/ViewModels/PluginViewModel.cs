@@ -1,6 +1,7 @@
 ﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Plugin;
 using MultiFunPlayer.Shortcut;
+using Newtonsoft.Json.Linq;
 using Stylet;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -35,17 +36,17 @@ internal sealed class PluginViewModel : Screen, IHandle<SettingsMessage>, IDispo
         _watcher.Deleted += OnWatcherDeleted;
 
         foreach (var fileInfo in new DirectoryInfo("Plugins").SafeEnumerateFileSystemInfos("*.cs"))
-            AddContainer(new FileInfo(fileInfo.FullName));
+            AddContainer(new FileInfo(fileInfo.FullName), compile: false);
     }
 
     private void OnWatcherRenamed(object sender, RenamedEventArgs e)
     {
         RemoveContainer(new FileInfo(e.OldFullPath));
-        AddContainer(new FileInfo(e.FullPath));
+        AddContainer(new FileInfo(e.FullPath), compile: true);
     }
 
     private void OnWatcherDeleted(object sender, FileSystemEventArgs e) => RemoveContainer(new FileInfo(e.FullPath));
-    private void OnWatcherCreated(object sender, FileSystemEventArgs e) => AddContainer(new FileInfo(e.FullPath));
+    private void OnWatcherCreated(object sender, FileSystemEventArgs e) => AddContainer(new FileInfo(e.FullPath), compile: true);
 
     private void RemoveContainer(FileInfo fileInfo)
     {
@@ -58,7 +59,7 @@ internal sealed class PluginViewModel : Screen, IHandle<SettingsMessage>, IDispo
         container.UnregisterActions(_shortcutManager);
     }
 
-    private void AddContainer(FileInfo fileInfo)
+    private void AddContainer(FileInfo fileInfo, bool compile)
     {
         if (!fileInfo.AsRefreshed().Exists)
             return;
@@ -71,18 +72,32 @@ internal sealed class PluginViewModel : Screen, IHandle<SettingsMessage>, IDispo
 
         var container = new PluginContainer(fileInfo);
         Containers.Add(fileInfo, container);
-        container.Compile();
+        if (compile)
+            container.Compile();
 
         container.RegisterActions(_shortcutManager);
     }
 
     public void Handle(SettingsMessage message)
     {
-        if (message.Action == SettingsAction.Loading)
-            return;
+        if (message.Action == SettingsAction.Saving)
+        {
+            if (!message.Settings.EnsureContainsObjects("Plugin")
+             || !message.Settings.TryGetObject(out var settings, "Plugin"))
+                return;
 
-        foreach (var (_, container) in Containers)
-            container.HandleSettings(message.Action);
+            settings[nameof(Containers)] = JToken.FromObject(Containers);
+        }
+        else if (message.Action == SettingsAction.Loading)
+        {
+            foreach (var (_, container) in Containers)
+            {
+                if (!message.Settings.TryGetObject(out var containerSettings, "Plugin", nameof(Containers), container.PluginFile.FullName))
+                    containerSettings = [];
+
+                containerSettings.Populate(container);
+            }
+        }
     }
 
     private void Dispose(bool disposing)
