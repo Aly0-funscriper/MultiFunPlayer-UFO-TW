@@ -48,7 +48,7 @@ internal sealed class XInputProcessor : AbstractInputProcessor
 
         Vortice.XInput.XInput.SetReporting(true);
 
-        for (var i = 0; i < _states.Length; i++)
+        for (var i = 0u; i < _states.Length; i++)
         {
             if (!Vortice.XInput.XInput.GetCapabilities(i, DeviceQueryType.Any, out var capabilities))
                 continue;
@@ -62,7 +62,7 @@ internal sealed class XInputProcessor : AbstractInputProcessor
             var elapsed = stopwatch.ElapsedTicks / (double)Stopwatch.Frequency;
             stopwatch.Restart();
 
-            for (var i = 0; i < _states.Length; i++)
+            for (var i = 0u; i < _states.Length; i++)
             {
                 if (!Vortice.XInput.XInput.GetState(i, out var state))
                     continue;
@@ -83,7 +83,7 @@ internal sealed class XInputProcessor : AbstractInputProcessor
         }
     }
 
-    private void ParseKeystrokeGestures(int userIndex, Keystroke keystroke)
+    private void ParseKeystrokeGestures(uint userIndex, Keystroke keystroke)
     {
         Logger.Trace("User: {0}, Keystroke: {1}, Flags: {2}", userIndex, keystroke.VirtualKey, keystroke.Flags);
 
@@ -100,7 +100,7 @@ internal sealed class XInputProcessor : AbstractInputProcessor
         }
     }
 
-    private void ParseStateGestures(int userIndex, ref Gamepad last, ref Gamepad current, double elapsed)
+    private void ParseStateGestures(uint userIndex, ref Gamepad last, ref Gamepad current, double elapsed)
     {
         void CreateAxisGestureShort(short last, short current, double deadZone, GamepadAxis axis)
         {
