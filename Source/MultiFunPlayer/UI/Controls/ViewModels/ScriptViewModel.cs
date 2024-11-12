@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using Stylet;
 using System.Diagnostics;
 using System.IO;
@@ -1286,7 +1286,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
         ResetSync(true, axis);
     }
 
-    public void OnBypassAll(object sender, RoutedEventArgs e)
+    public void OnBypassEnableAll(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement element || element.DataContext is not KeyValuePair<DeviceAxis, AxisModel> pair)
             return;
@@ -1296,6 +1296,18 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
         settings.BypassScript = true;
         settings.BypassMotionProvider = true;
         settings.BypassTransition = true;
+    }
+
+    public void OnBypassDisableAll(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement element || element.DataContext is not KeyValuePair<DeviceAxis, AxisModel> pair)
+            return;
+
+        var (axis, _) = pair;
+        var settings = AxisSettings[axis];
+        settings.BypassScript = false;
+        settings.BypassMotionProvider = false;
+        settings.BypassTransition = false;
     }
 
     [SuppressPropertyChangedWarnings]

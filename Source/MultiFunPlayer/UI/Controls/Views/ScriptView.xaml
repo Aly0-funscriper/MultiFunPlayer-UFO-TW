@@ -786,11 +786,34 @@
                                                 </material:PopupBox.ToggleContent>
                                                 <Grid Margin="10">
                                                     <StackPanel>
-                                                        <Button Style="{StaticResource MaterialDesignPaperButton}"
-                                                                Margin="0 0 0 15"
-                                                                Click="{s:Action OnBypassAll}"
-                                                                Content="Bypass all"
-                                                                Typography.Capitals="AllSmallCaps"/>
+                                                        <DockPanel Margin="0 0 0 15" LastChildFill="True">
+                                                            <Button DockPanel.Dock="Right"
+                                                                    Style="{StaticResource MaterialDesignPaperButton}"
+                                                                    Width="32"
+                                                                    Padding="0"
+                                                                    Click="{s:Action OnBypassDisableAll}"
+                                                                    ToolTip="Disable all">
+                                                                <Button.IsEnabled>
+                                                                    <MultiBinding Converter="{StaticResource BooleanOrConverter}">
+                                                                        <MultiBinding.Bindings>
+                                                                            <Binding Path="Value.Settings.BypassScript"/>
+                                                                            <Binding Path="Value.Settings.BypassMotionProvider"/>
+                                                                            <Binding Path="Value.Settings.BypassTransition"/>
+                                                                        </MultiBinding.Bindings>
+                                                                    </MultiBinding>
+                                                                </Button.IsEnabled>
+                                                                <material:PackIcon Width="20"
+                                                                                   Height="20"
+                                                                                   Kind="ToggleSwitchOffOutline"/>
+                                                            </Button>
+
+                                                            <Button DockPanel.Dock="Left"
+                                                                    Style="{StaticResource MaterialDesignPaperButton}"
+                                                                    Margin="0 0 10 0"
+                                                                    Click="{s:Action OnBypassEnableAll}"
+                                                                    Content="Bypass all"
+                                                                    Typography.Capitals="AllSmallCaps"/>
+                                                        </DockPanel>
 
                                                         <TextBlock VerticalAlignment="Center"
                                                                    FontSize="12"
