@@ -10,21 +10,16 @@ internal interface IDeviceAxisValueProvider
 {
     public double GetValue(DeviceAxis axis);
 
-    public void BeginSnapshotPolling(object context);
-    public void EndSnapshotPolling(object context);
+    public void BeginEventPolling(object context);
+    public void EndEventPolling(object context);
 
-    public (DeviceAxis, DeviceAxisScriptSnapshot) WaitForSnapshotAny(IReadOnlyList<DeviceAxis> axes, object context, CancellationToken cancellationToken);
-    public ValueTask<(DeviceAxis, DeviceAxisScriptSnapshot)> WaitForSnapshotAnyAsync(IReadOnlyList<DeviceAxis> axes, object context, CancellationToken cancellationToken);
-    public (bool, DeviceAxisScriptSnapshot) WaitForSnapshot(DeviceAxis axis, object context, CancellationToken cancellationToken);
-    public ValueTask<(bool, DeviceAxisScriptSnapshot)> WaitForSnapshotAsync(DeviceAxis axis, object context, CancellationToken cancellationToken);
+    public (DeviceAxis, DeviceAxisValueEvent) WaitForEventAny(IReadOnlyList<DeviceAxis> axes, object context, CancellationToken cancellationToken);
+    public ValueTask<(DeviceAxis, DeviceAxisValueEvent)> WaitForEventAnyAsync(IReadOnlyList<DeviceAxis> axes, object context, CancellationToken cancellationToken);
+    public (bool, DeviceAxisValueEvent) WaitForEvent(DeviceAxis axis, object context, CancellationToken cancellationToken);
+    public ValueTask<(bool, DeviceAxisValueEvent)> WaitForEventAsync(DeviceAxis axis, object context, CancellationToken cancellationToken);
 }
 
-internal sealed class DeviceAxisScriptSnapshot
-{
-    public required Keyframe KeyframeFrom { get; init; }
-    public required Keyframe KeyframeTo { get; init; }
-    public required int IndexFrom { get; init; }
-    public required int IndexTo { get; init; }
+internal record DeviceAxisValueEvent(double TargetValue, double Duration);
 
-    public double Duration => KeyframeTo?.Position - KeyframeFrom?.Position ?? double.NaN;
-}
+internal sealed record class DeviceAxisScriptEvent(Keyframe From, Keyframe To)
+    : DeviceAxisValueEvent(To?.Value ?? double.NaN, To?.Position - From?.Position ?? double.NaN);

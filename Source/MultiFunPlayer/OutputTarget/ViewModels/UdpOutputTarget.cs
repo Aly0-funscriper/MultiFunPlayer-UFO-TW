@@ -108,19 +108,18 @@ internal sealed class UdpOutputTarget(int instanceIndex, IEventAggregator eventA
             else if (UpdateType == DeviceAxisUpdateType.PolledUpdate)
             {
                 client.BeginReceive(ReceiveCallback, null);
-                PolledUpdate(DeviceAxis.All, () => !token.IsCancellationRequested, (_, axis, snapshot, elapsed) =>
+                PolledUpdate(DeviceAxis.All, () => !token.IsCancellationRequested, (_, axis, axisEvent, elapsed) =>
                 {
-                    Logger.Trace("Begin PolledUpdate [Axis: {0}, Index From: {1}, Index To: {2}, Duration: {3}, Elapsed: {4}]",
-                        axis, snapshot.IndexFrom, snapshot.IndexTo, snapshot.Duration, elapsed);
+                    Logger.Trace("Begin PolledUpdate [Axis: {0}, Event: {1}, Elapsed: {2}]", axis, axisEvent, elapsed);
 
                     var settings = AxisSettings[axis];
                     if (!settings.Enabled)
                         return;
-                    if (snapshot.KeyframeFrom == null || snapshot.KeyframeTo == null)
+                    if (!double.IsFinite(axisEvent.TargetValue))
                         return;
 
-                    var value = MathUtils.Lerp(settings.Minimum, settings.Maximum, snapshot.KeyframeTo.Value);
-                    var duration = snapshot.Duration;
+                    var value = MathUtils.Lerp(settings.Minimum, settings.Maximum, axisEvent.TargetValue);
+                    var duration = axisEvent.Duration;
 
                     var command = DeviceAxis.ToString(axis, value, duration * 1000);
                     if (!string.IsNullOrWhiteSpace(command))

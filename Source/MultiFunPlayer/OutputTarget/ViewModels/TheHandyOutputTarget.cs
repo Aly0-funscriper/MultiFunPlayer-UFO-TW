@@ -115,17 +115,17 @@ internal sealed class TheHandyOutputTarget(int instanceIndex, IEventAggregator e
             Status = ConnectionStatus.Connected;
             EventAggregator.Publish(new SyncRequestMessage());
 
-            await PolledUpdateAsync(SourceAxis, () => !token.IsCancellationRequested, async (_, snapshot, elapsed) =>
+            await PolledUpdateAsync(SourceAxis, () => !token.IsCancellationRequested, async (_, axisEvent, elapsed) =>
             {
-                Logger.Trace("Begin PolledUpdate [Index From: {0}, Index To: {1}, Duration: {2}, Elapsed: {3}]", snapshot.IndexFrom, snapshot.IndexTo, snapshot.Duration, elapsed);
-                if (snapshot.KeyframeFrom == null || snapshot.KeyframeTo == null)
+                Logger.Trace("Begin PolledUpdate [Event: {0}, Elapsed: {1}]", axisEvent, elapsed);
+                if (!double.IsFinite(axisEvent.TargetValue))
                     return;
 
                 if (!AxisSettings[SourceAxis].Enabled)
                     return;
 
-                var position = Math.Clamp(snapshot.KeyframeTo.Value * 100, 0, 100);
-                var duration = (int)Math.Floor(snapshot.Duration * 1000 + 0.75);
+                var position = Math.Clamp(axisEvent.TargetValue * 100, 0, 100);
+                var duration = (int)Math.Floor(axisEvent.Duration * 1000 + 0.75);
                 var content = $"{{ \"immediateResponse\": true, \"stopOnTarget\": true, \"duration\": {duration}, \"position\": {position.ToString(CultureInfo.InvariantCulture)} }}";
 
                 var result = await ApiPutAsync(client, "hdsp/xpt", content, token);

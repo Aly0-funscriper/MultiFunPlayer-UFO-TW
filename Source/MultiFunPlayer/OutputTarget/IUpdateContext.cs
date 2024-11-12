@@ -14,11 +14,11 @@ internal abstract class AbstractPolledUpdateContext : PropertyChangedBase, IUpda
 
     public double AverageUpdateError { get; private set; }
 
-    public void UpdateStats(DeviceAxis axis, DeviceAxisScriptSnapshot snapshot, double elapsed)
+    public void UpdateStats(DeviceAxis axis, DeviceAxisValueEvent axisEvent, double elapsed)
     {
         if (!_previousDuration.TryGetValue(axis, out var previousDuration) || !double.IsFinite(previousDuration))
         {
-            _previousDuration[axis] = snapshot.Duration;
+            _previousDuration[axis] = axisEvent.Duration;
             return;
         }
 
@@ -27,7 +27,7 @@ internal abstract class AbstractPolledUpdateContext : PropertyChangedBase, IUpda
             _errors.Dequeue();
 
         AverageUpdateError = _errors.Average() * 1000;
-        _previousDuration[axis] = snapshot.Duration;
+        _previousDuration[axis] = axisEvent.Duration;
     }
 }
 
