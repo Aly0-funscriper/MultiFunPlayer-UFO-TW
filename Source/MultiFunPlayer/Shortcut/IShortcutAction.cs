@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Input;
+using System.Collections.ObjectModel;
 
 namespace MultiFunPlayer.Shortcut;
 
@@ -11,7 +12,7 @@ internal interface IShortcutAction
 
 internal abstract class AbstractShortcutAction : IShortcutAction
 {
-    private readonly IReadOnlyList<Type> _arguments;
+    private readonly ReadOnlyCollection<Type> _arguments;
 
     protected AbstractShortcutAction()
     {

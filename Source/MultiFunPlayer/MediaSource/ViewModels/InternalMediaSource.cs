@@ -18,7 +18,7 @@ namespace MultiFunPlayer.MediaSource.ViewModels;
 [DisplayName("Internal")]
 internal sealed class InternalMediaSource(ILocalScriptRepository localRepository, IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
 {
-    private readonly object _playlistLock = new();
+    private readonly Lock _playlistLock = new();
 
     private bool _isPlaying;
     private double _position;

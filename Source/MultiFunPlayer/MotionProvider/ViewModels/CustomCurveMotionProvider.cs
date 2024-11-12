@@ -14,7 +14,7 @@ namespace MultiFunPlayer.MotionProvider.ViewModels;
 [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
 internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
 {
-    private readonly object _stateLock = new();
+    private readonly Lock _stateLock = new();
 
     private int _index;
     private KeyframeCollection _keyframes;
