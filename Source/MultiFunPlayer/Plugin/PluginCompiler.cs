@@ -67,7 +67,7 @@ internal sealed class PluginCompilationResult : IDisposable
     }
 }
 
-internal static class PluginCompiler
+internal static partial class PluginCompiler
 {
     private readonly static IReadOnlyCollection<string> ValidPluginBaseClasses = [nameof(SyncPluginBase), nameof(AsyncPluginBase)];
 
@@ -75,8 +75,6 @@ internal static class PluginCompiler
     private static Task _compileTask;
 
     private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
-    private static Regex ReferenceRegex { get; } = new Regex(@"^//#r\s+""(?<value>.+?)""\s*$", RegexOptions.Compiled | RegexOptions.Multiline);
-
     private static IContainer Container { get; set; }
     private static IViewManager ViewManager { get; set; }
 
@@ -312,6 +310,9 @@ internal static class PluginCompiler
         Container = container;
         ViewManager = container.Get<IViewManager>();
     }
+
+    [GeneratedRegex(@"^//#r\s+""(?<value>.+?)""\s*$", RegexOptions.Multiline)]
+    private static partial Regex ReferenceRegex { get; }
 }
 
 internal sealed class PluginAssemblyLoadContext() : AssemblyLoadContext(isCollectible: true), IDisposable

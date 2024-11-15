@@ -21,7 +21,7 @@ public static partial class NetUtils
         if (string.IsNullOrWhiteSpace(endpointString))
             return null;
 
-        var match = EndpointRegex().Match(endpointString);
+        var match = EndpointRegex.Match(endpointString);
         if (!match.Success)
             return null;
 
@@ -65,5 +65,5 @@ public static partial class NetUtils
     }
 
     [GeneratedRegex(@"^(?:(?<family>InterNetwork|InterNetworkV6|Unspecified)\/)?(?<ipOrHost>.+):(?<port>\d+)$")]
-    private static partial Regex EndpointRegex();
+    private static partial Regex EndpointRegex { get; }
 }

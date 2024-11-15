@@ -4,7 +4,7 @@ using System.Windows.Data;
 
 namespace MultiFunPlayer.UI.Converters;
 
-public sealed class PortToStringConverter : IValueConverter
+public sealed partial class PortToStringConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         => value switch
@@ -19,13 +19,16 @@ public sealed class PortToStringConverter : IValueConverter
         if (value is not string s)
             return 0;
 
-        var match = Regex.Match(s, @".*?(\d+).*");
+        var match = PortRegex.Match(s);
         if (!match.Success)
             return 0;
 
-        if (match.Groups.Count == 2 && int.TryParse(match.Groups[1].Value, out var port))
+        if (int.TryParse(match.Groups["port"].Value, out var port))
             return Math.Clamp(port, 0, 65535);
 
         return 0;
     }
+
+    [GeneratedRegex(@".*?(?<port>\d+).*")]
+    private static partial Regex PortRegex { get; }
 }
