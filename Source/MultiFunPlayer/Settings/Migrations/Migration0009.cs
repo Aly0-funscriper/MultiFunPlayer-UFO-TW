@@ -15,7 +15,7 @@ internal sealed class Migration0009 : AbstractSettingsMigration
 
         SetPropertyByName(settings, "SelectedDevice", selectedDevice, addIfMissing: true);
 
-        var device = defaultDevices.Find(d => string.Equals(d.Name, selectedDevice.ToObject<string>(), StringComparison.OrdinalIgnoreCase)) ?? defaultDevices[^1];
+        var device = defaultDevices.FirstOrDefault(d => string.Equals(d.Name, selectedDevice.ToObject<string>(), StringComparison.OrdinalIgnoreCase)) ?? defaultDevices[^1];
         var migratedName = $"{device.Name} (migrated)";
         var migratedDevice = device.Clone(migratedName);
 

@@ -37,20 +37,20 @@ public sealed class ChapterCollection : IReadOnlyList<Chapter>
 
     public bool TryFindIntersecting(double position, out Chapter chapter)
     {
-        chapter = _items.Find(x => position >= x.StartPosition && position <= x.EndPosition);
+        chapter = _items.FirstOrDefault(x => position >= x.StartPosition && position <= x.EndPosition);
         return chapter != null;
     }
 
     public bool TryFindIntersecting(double position, double epsilon, out Chapter chapter)
     {
-        chapter = _items.Find(x => position >= x.StartPosition && position <= x.EndPosition)
-               ?? _items.Find(x => position >= x.StartPosition - epsilon && position <= x.EndPosition + epsilon);
+        chapter = _items.FirstOrDefault(x => position >= x.StartPosition && position <= x.EndPosition)
+               ?? _items.FirstOrDefault(x => position >= x.StartPosition - epsilon && position <= x.EndPosition + epsilon);
         return chapter != null;
     }
 
     public bool TryFindByName(string name, out Chapter chapter)
     {
-        chapter = _items.Find(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
+        chapter = _items.FirstOrDefault(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
         return chapter != null;
     }
 

@@ -60,7 +60,7 @@ internal sealed class XBVRScriptRepository : AbstractScriptRepository
             {
                 var sceneMetadata = await GetSceneMetadataAsync(sceneId);
 
-                currentFile ??= sceneMetadata?.Files?.Find(f => f.Id == fileId);
+                currentFile ??= sceneMetadata?.Files?.FirstOrDefault(f => f.Id == fileId);
                 if (currentFile == null)
                     return [];
 

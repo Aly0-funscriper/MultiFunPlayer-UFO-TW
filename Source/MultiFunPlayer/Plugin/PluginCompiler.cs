@@ -215,7 +215,7 @@ internal static partial class PluginCompiler
             pdbStream.Seek(0, SeekOrigin.Begin);
 
             var assembly = context.LoadFromStream(peStream, pdbStream);
-            var pluginType = Array.Find(assembly.GetExportedTypes(), t => t.IsAssignableTo(typeof(PluginBase)));
+            var pluginType = assembly.GetExportedTypes().FirstOrDefault(t => t.IsAssignableTo(typeof(PluginBase)));
 
             if (pluginType == null)
                 return PluginCompilationResult.FromFailure(context, new PluginCompileException("Unable to find exported Plugin type"));

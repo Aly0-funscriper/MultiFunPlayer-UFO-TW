@@ -18,7 +18,7 @@ public sealed class BookmarkCollection : IReadOnlyList<Bookmark>
 
     public bool TryFindByName(string name, out Bookmark bookmark)
     {
-        bookmark = _items.Find(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
+        bookmark = _items.FirstOrDefault(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
         return bookmark != null;
     }
 
