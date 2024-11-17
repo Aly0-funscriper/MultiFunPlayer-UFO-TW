@@ -137,7 +137,7 @@ public sealed partial class UriBox : UserControl
         }
         else
         {
-            AvailableSchemes = [.. Schemes.Split((char[])[',', ' '], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)];
+            AvailableSchemes = [.. Schemes.Split([',', ' '], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)];
             Scheme = AvailableSchemes.FirstOrDefault();
         }
     }
