@@ -9,7 +9,7 @@ internal sealed class ButtonClickShortcut(IShortcutActionRunner actionRunner, IS
 {
     private int _stateCounter;
 
-    public int ClickCount { get; set; } = 2;
+    public int ClickCount { get; set; } = 1;
     public int MaximumClickInterval { get; set; } = 200;
 
     protected override void Update(ISimpleInputGesture gesture)
