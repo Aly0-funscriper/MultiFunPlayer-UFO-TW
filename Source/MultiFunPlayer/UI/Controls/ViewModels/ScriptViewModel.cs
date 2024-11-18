@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using Stylet;
 using System.Diagnostics;
 using System.IO;
@@ -1583,7 +1583,11 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
         s.RegisterAction<DeviceAxis>("Axis::Sync",
             s => s.WithLabel("Target axis").WithItemsSource(DeviceAxis.All), axis => { if (axis != null) ResetSync(true, axis); });
 
+        s.RegisterAction<DeviceAxis>("Axis::Sync::Cancel",
+            s => s.WithLabel("Target axis").WithItemsSource(DeviceAxis.All), axis => { if (axis != null) ResetSync(false, axis); });
+
         s.RegisterAction("Axis::SyncAll", () => ResetSync(true, null));
+        s.RegisterAction("Axis::SyncAll::Cancel", () => ResetSync(false, null));
         #endregion
 
         #region Axis::Lock
