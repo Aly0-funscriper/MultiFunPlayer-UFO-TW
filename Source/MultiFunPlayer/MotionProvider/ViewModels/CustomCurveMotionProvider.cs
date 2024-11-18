@@ -19,7 +19,7 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
     private int _index;
     private KeyframeCollection _keyframes;
     private bool _playing;
-    private int _pendingRefreshFlag;
+    private bool _pendingRefreshFlag;
 
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
     public ObservableConcurrentCollection<Point> Points { get; set; }
@@ -38,7 +38,7 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
         : base(target, eventAggregator)
     {
         Points = [new()];
-        _pendingRefreshFlag = 1;
+        _pendingRefreshFlag = true;
 
         ResetState(true);
     }
@@ -53,11 +53,11 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
         if (newValue != null)
             newValue.CollectionChanged += OnPointsCollectionChanged;
 
-        Interlocked.Exchange(ref _pendingRefreshFlag, 1);
+        Interlocked.Exchange(ref _pendingRefreshFlag, true);
     }
 
     public void OnViewportChanged()
-        => Interlocked.Exchange(ref _pendingRefreshFlag, 1);
+        => Interlocked.Exchange(ref _pendingRefreshFlag, true);
 
     public void OnIsLoopingChanged()
     {
@@ -68,14 +68,14 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
 
     [SuppressPropertyChangedWarnings]
     private void OnPointsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-        => Interlocked.Exchange(ref _pendingRefreshFlag, 1);
+        => Interlocked.Exchange(ref _pendingRefreshFlag, true);
 
     public override void Update(double deltaTime)
     {
         if (Points == null || Points.Count == 0)
             return;
 
-        var needsRefresh = Interlocked.CompareExchange(ref _pendingRefreshFlag, 0, 1) == 1;
+        var needsRefresh = Interlocked.CompareExchange(ref _pendingRefreshFlag, false, true);
         if (needsRefresh)
         {
             if (IsLooping && Points.Count != 1)

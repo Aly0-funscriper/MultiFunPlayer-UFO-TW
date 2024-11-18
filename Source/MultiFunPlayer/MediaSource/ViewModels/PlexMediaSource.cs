@@ -320,13 +320,13 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAg
     public bool CanRefreshClients => !IsRefreshBusy && IsDisconnected && ServerBaseUri != null && !string.IsNullOrWhiteSpace(PlexToken);
     public bool IsRefreshBusy { get; set; }
 
-    private int _isRefreshingFlag;
+    private bool _isRefreshingFlag;
     public async Task RefreshClients()
     {
         if (string.IsNullOrWhiteSpace(PlexToken))
             return;
 
-        if (Interlocked.CompareExchange(ref _isRefreshingFlag, 1, 0) != 0)
+        if (Interlocked.CompareExchange(ref _isRefreshingFlag, true, false))
             return;
 
         try
@@ -343,7 +343,7 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAg
         }
         finally
         {
-            Interlocked.Decrement(ref _isRefreshingFlag);
+            Interlocked.Exchange(ref _isRefreshingFlag, false);
             IsRefreshBusy = false;
         }
 

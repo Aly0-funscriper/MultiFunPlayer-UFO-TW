@@ -104,10 +104,10 @@ internal abstract class AbstractMediaSource : Screen, IMediaSource, IHandle<IMed
 
     protected abstract ValueTask<bool> OnConnectingAsync(ConnectionType connectionType);
 
-    private int _isDisconnectingFlag;
+    private bool _isDisconnectingFlag;
     protected async ValueTask OnDisconnectingAsync()
     {
-        if (Interlocked.CompareExchange(ref _isDisconnectingFlag, 1, 0) != 0)
+        if (Interlocked.CompareExchange(ref _isDisconnectingFlag, true, false))
             return;
 
         _cancellationSource?.Cancel();
@@ -118,7 +118,7 @@ internal abstract class AbstractMediaSource : Screen, IMediaSource, IHandle<IMed
         _cancellationSource = null;
         _task = null;
 
-        Interlocked.Decrement(ref _isDisconnectingFlag);
+        Interlocked.Exchange(ref _isDisconnectingFlag, false);
     }
 
     public async Task WaitForStatus(IEnumerable<ConnectionStatus> statuses, CancellationToken token)

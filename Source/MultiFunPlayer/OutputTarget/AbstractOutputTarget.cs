@@ -402,10 +402,10 @@ internal abstract class ThreadAbstractOutputTarget(int instanceIndex, IEventAggr
         _thread.Start();
     }
 
-    private int _isDisconnectingFlag;
+    private bool _isDisconnectingFlag;
     protected async override ValueTask OnDisconnectingAsync()
     {
-        if (Interlocked.CompareExchange(ref _isDisconnectingFlag, 1, 0) != 0)
+        if (Interlocked.CompareExchange(ref _isDisconnectingFlag, true, false))
             return;
 
         _cancellationSource?.Cancel();
@@ -418,7 +418,7 @@ internal abstract class ThreadAbstractOutputTarget(int instanceIndex, IEventAggr
         _cancellationSource = null;
         _thread = null;
 
-        Interlocked.Decrement(ref _isDisconnectingFlag);
+        Interlocked.Exchange(ref _isDisconnectingFlag, false);
     }
 
     protected void FixedUpdate(Func<bool> condition, Action<ThreadFixedUpdateContext, double> body)
@@ -539,10 +539,10 @@ internal abstract class AsyncAbstractOutputTarget(int instanceIndex, IEventAggre
         });
     }
 
-    private int _isDisconnectingFlag;
+    private bool _isDisconnectingFlag;
     protected override async ValueTask OnDisconnectingAsync()
     {
-        if (Interlocked.CompareExchange(ref _isDisconnectingFlag, 1, 0) != 0)
+        if (Interlocked.CompareExchange(ref _isDisconnectingFlag, true, false))
             return;
 
         _cancellationSource?.Cancel();
@@ -554,7 +554,7 @@ internal abstract class AsyncAbstractOutputTarget(int instanceIndex, IEventAggre
         _cancellationSource = null;
         _task = null;
 
-        Interlocked.Decrement(ref _isDisconnectingFlag);
+        Interlocked.Exchange(ref _isDisconnectingFlag, false);
     }
 
     protected Task FixedUpdateAsync(Func<bool> condition, Func<AsyncFixedUpdateContext, double, Task> body, CancellationToken token)

@@ -209,7 +209,7 @@ internal sealed class JellyfinMediaSource(IShortcutManager shortcutManager, IEve
     public bool CanRefreshDevices => !IsRefreshBusy && IsDisconnected && ServerBaseUri != null && !string.IsNullOrEmpty(ApiKey);
     public bool IsRefreshBusy { get; set; }
 
-    private int _isRefreshingFlag;
+    private bool _isRefreshingFlag;
     public async Task RefreshDevices()
     {
         if (ServerBaseUri == null)
@@ -217,7 +217,7 @@ internal sealed class JellyfinMediaSource(IShortcutManager shortcutManager, IEve
         if (string.IsNullOrEmpty(ApiKey))
             return;
 
-        if (Interlocked.CompareExchange(ref _isRefreshingFlag, 1, 0) != 0)
+        if (Interlocked.CompareExchange(ref _isRefreshingFlag, true, false))
             return;
 
         try
@@ -234,7 +234,7 @@ internal sealed class JellyfinMediaSource(IShortcutManager shortcutManager, IEve
         }
         finally
         {
-            Interlocked.Decrement(ref _isRefreshingFlag);
+            Interlocked.Exchange(ref _isRefreshingFlag, false);
             IsRefreshBusy = false;
         }
 

@@ -1,4 +1,4 @@
-using PropertyChanged;
+﻿using PropertyChanged;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -11,7 +11,7 @@ namespace MultiFunPlayer.UI.Controls;
 [AddINotifyPropertyChangedInterface]
 public sealed partial class UriBox : UserControl
 {
-    private int _isUpdating;
+    private bool _isUpdating;
 
     public IReadOnlyList<string> AvailableSchemes { get; private set; } = [];
 
@@ -121,11 +121,11 @@ public sealed partial class UriBox : UserControl
 
     private void GuardUpdate(Action action)
     {
-        if (Interlocked.CompareExchange(ref _isUpdating, 1, 0) != 0)
+        if (Interlocked.CompareExchange(ref _isUpdating, true, false))
             return;
 
         action();
-        _isUpdating = 0;
+        Interlocked.Exchange(ref _isUpdating, false);
     }
 
     private void UpdateAvailableSchemes()
