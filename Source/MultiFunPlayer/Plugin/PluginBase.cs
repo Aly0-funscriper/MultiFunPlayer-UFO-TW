@@ -14,7 +14,6 @@ namespace MultiFunPlayer.Plugin;
 public abstract class PluginBase : PropertyChangedBase
 {
     private readonly MessageProxy _messageProxy;
-    private readonly FrozenDictionary<Type, bool> _asyncHandlerOverrides;
 
     internal CancellationTokenSource InternalCancellationSource;
     internal event EventHandler<Exception> OnInternalException;
@@ -31,11 +30,6 @@ public abstract class PluginBase : PropertyChangedBase
     {
         _messageProxy = new(HandleMessageInternal);
         Logger = LogManager.GetLogger(GetType().FullName);
-
-        _asyncHandlerOverrides = GetType().GetMethods(BindingFlags.Instance | BindingFlags.NonPublic)
-                                          .Where(m => m.Name == nameof(HandleMessageAsync))
-                                          .ToFrozenDictionary(m => m.GetParameters()[0].ParameterType,
-                                                              m => m.GetBaseDefinition().DeclaringType != m.DeclaringType);
     }
 
     #region DeviceAxis
@@ -158,18 +152,18 @@ public abstract class PluginBase : PropertyChangedBase
     protected virtual void HandleMessage(SyncRequestMessage message) { }
     protected virtual void HandleMessage(PostScriptSearchMessage message) { }
 
-    protected virtual Task HandleMessageAsync(MediaSpeedChangedMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaPositionChangedMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaPlayPauseMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaPathChangedMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaDurationChangedMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaSeekMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaPlayingChangedMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaChangePathMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaChangeSpeedMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(ScriptChangedMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(SyncRequestMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(PostScriptSearchMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaSpeedChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaPositionChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaPlayPauseMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaPathChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaDurationChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaSeekMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaPlayingChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaChangePathMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaChangeSpeedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(ScriptChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(SyncRequestMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(PostScriptSearchMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
 
     private void HandleMessageInternal(object e)
     {
@@ -193,32 +187,38 @@ public abstract class PluginBase : PropertyChangedBase
             OnInternalException?.Invoke(this, exception);
         }
 
-        if (_asyncHandlerOverrides.TryGetValue(e.GetType(), out var overridden) && overridden)
+        var cancellationSource = InternalCancellationSource;
+        if (cancellationSource == null)
+            return;
+        if (cancellationSource.IsCancellationRequested)
+            return;
+
+        var token = cancellationSource.Token;
+        try
         {
-            var token = InternalCancellationSource.Token;
-            _ = Task.Run(async () =>
+            var valueTask = e switch
             {
-                try
-                {
-                    if (e is MediaSpeedChangedMessage mediaSpeedChangedMessage) await HandleMessageAsync(mediaSpeedChangedMessage, token);
-                    else if (e is MediaPositionChangedMessage mediaPositionChangedMessage) await HandleMessageAsync(mediaPositionChangedMessage, token);
-                    else if (e is MediaPlayingChangedMessage mediaPlayingChangedMessage) await HandleMessageAsync(mediaPlayingChangedMessage, token);
-                    else if (e is MediaPathChangedMessage mediaPathChangedMessage) await HandleMessageAsync(mediaPathChangedMessage, token);
-                    else if (e is MediaDurationChangedMessage mediaDurationChangedMessage) await HandleMessageAsync(mediaDurationChangedMessage, token);
-                    else if (e is MediaSeekMessage mediaSeekMessage) await HandleMessageAsync(mediaSeekMessage, token);
-                    else if (e is MediaPlayPauseMessage mediaPlayPauseMessage) await HandleMessageAsync(mediaPlayPauseMessage, token);
-                    else if (e is MediaChangePathMessage mediaChangePathMessage) await HandleMessageAsync(mediaChangePathMessage, token);
-                    else if (e is MediaChangeSpeedMessage mediaChangeSpeedMessage) await HandleMessageAsync(mediaChangeSpeedMessage, token);
-                    else if (e is ScriptChangedMessage scriptChangedMessage) await HandleMessageAsync(scriptChangedMessage, token);
-                    else if (e is SyncRequestMessage syncRequestMessage) await HandleMessageAsync(syncRequestMessage, token);
-                    else if (e is PostScriptSearchMessage postScriptSearchMessage) await HandleMessageAsync(postScriptSearchMessage, token);
-                }
-                catch (OperationCanceledException) { }
-                catch (Exception exception)
-                {
-                    OnInternalException?.Invoke(this, exception);
-                }
-            });
+                MediaSpeedChangedMessage mediaSpeedChangedMessage => HandleMessageAsync(mediaSpeedChangedMessage, token),
+                MediaPositionChangedMessage mediaPositionChangedMessage => HandleMessageAsync(mediaPositionChangedMessage, token),
+                MediaPlayingChangedMessage mediaPlayingChangedMessage => HandleMessageAsync(mediaPlayingChangedMessage, token),
+                MediaPathChangedMessage mediaPathChangedMessage => HandleMessageAsync(mediaPathChangedMessage, token),
+                MediaDurationChangedMessage mediaDurationChangedMessage => HandleMessageAsync(mediaDurationChangedMessage, token),
+                MediaSeekMessage mediaSeekMessage => HandleMessageAsync(mediaSeekMessage, token),
+                MediaPlayPauseMessage mediaPlayPauseMessage => HandleMessageAsync(mediaPlayPauseMessage, token),
+                MediaChangePathMessage mediaChangePathMessage => HandleMessageAsync(mediaChangePathMessage, token),
+                MediaChangeSpeedMessage mediaChangeSpeedMessage => HandleMessageAsync(mediaChangeSpeedMessage, token),
+                ScriptChangedMessage scriptChangedMessage => HandleMessageAsync(scriptChangedMessage, token),
+                SyncRequestMessage syncRequestMessage => HandleMessageAsync(syncRequestMessage, token),
+                PostScriptSearchMessage postScriptSearchMessage => HandleMessageAsync(postScriptSearchMessage, token),
+                _ => ValueTask.CompletedTask
+            };
+
+            valueTask.Preserve().GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception exception)
+        {
+            OnInternalException?.Invoke(this, exception);
         }
     }
 
