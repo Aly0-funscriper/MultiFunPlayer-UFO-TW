@@ -1,8 +1,10 @@
-﻿namespace MultiFunPlayer.Property;
+﻿using MultiFunPlayer.Common;
+
+namespace MultiFunPlayer.Property;
 
 internal interface IPropertyManager
 {
-    IReadOnlyCollection<string> AvailableProperties { get; }
+    IReadOnlyObservableConcurrentCollection<string> AvailableProperties { get; }
 
     void RegisterProperty<TOut>(string propertyName, Func<TOut> getter);
     void RegisterProperty<T0, TOut>(string propertyName, Func<T0, TOut> getter);
@@ -17,20 +19,40 @@ internal interface IPropertyManager
 
 internal sealed class PropertyManager : IPropertyManager
 {
+    private readonly ObservableConcurrentCollection<string> _availableProperties;
     private readonly Dictionary<string, IPropertyDelegate> _properties;
 
-    public IReadOnlyCollection<string> AvailableProperties => _properties.Keys;
+    public IReadOnlyObservableConcurrentCollection<string> AvailableProperties => _availableProperties;
 
     public PropertyManager()
     {
+        _availableProperties = [];
         _properties = [];
     }
 
-    public void RegisterProperty<TOut>(string propertyName, Func<TOut> getter) => _properties.Add(propertyName, new PropertyDelegate<TOut>(getter));
-    public void RegisterProperty<T0, TOut>(string propertyName, Func<T0, TOut> getter) => _properties.Add(propertyName, new PropertyDelegate<T0, TOut>(getter));
-    public void RegisterProperty<T0, T1, TOut>(string propertyName, Func<T0, T1, TOut> getter) => _properties.Add(propertyName, new PropertyDelegate<T0, T1, TOut>(getter));
+    public void RegisterProperty<TOut>(string propertyName, Func<TOut> getter)
+    {
+        _properties.Add(propertyName, new PropertyDelegate<TOut>(getter));
+        _availableProperties.Add(propertyName);
+    }
 
-    public void UnregisterProperty(string propertyName) => _properties.Remove(propertyName);
+    public void RegisterProperty<T0, TOut>(string propertyName, Func<T0, TOut> getter)
+    {
+        _properties.Add(propertyName, new PropertyDelegate<T0, TOut>(getter));
+        _availableProperties.Add(propertyName);
+    }
+
+    public void RegisterProperty<T0, T1, TOut>(string propertyName, Func<T0, T1, TOut> getter)
+    {
+        _properties.Add(propertyName, new PropertyDelegate<T0, T1, TOut>(getter));
+        _availableProperties.Add(propertyName);
+    }
+
+    public void UnregisterProperty(string propertyName)
+    {
+        _availableProperties.Remove(propertyName);
+        _properties.Remove(propertyName);
+    }
 
     public TOut GetValue<TOut>(string propertyName, params object[] args)
     {
