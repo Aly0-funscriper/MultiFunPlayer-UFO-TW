@@ -184,11 +184,7 @@ internal abstract class AbstractMediaSource : Screen, IMediaSource, IHandle<IMed
     }
 
     protected virtual void Dispose(bool disposing)
-    {
-        var valueTask = OnDisconnectingAsync();
-        if (!valueTask.IsCompleted)
-            valueTask.AsTask().GetAwaiter().GetResult();
-    }
+        => OnDisconnectingAsync().Preserve().GetAwaiter().GetResult();
 
     public void Dispose()
     {

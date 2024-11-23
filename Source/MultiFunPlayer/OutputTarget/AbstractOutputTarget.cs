@@ -351,11 +351,7 @@ internal abstract class AbstractOutputTarget : Screen, IOutputTarget
     }
 
     protected virtual void Dispose(bool disposing)
-    {
-        var valueTask = OnDisconnectingAsync();
-        if (!valueTask.IsCompleted)
-            valueTask.AsTask().GetAwaiter().GetResult();
-    }
+        => OnDisconnectingAsync().Preserve().GetAwaiter().GetResult();
 
     public void Dispose()
     {
