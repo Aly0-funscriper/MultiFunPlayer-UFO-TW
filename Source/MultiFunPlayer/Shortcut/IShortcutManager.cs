@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
 using MultiFunPlayer.Settings;
 using NLog;
@@ -320,10 +320,10 @@ internal sealed class ShortcutManager : IShortcutManager, IHandle<IInputGesture>
         if (!_actions.ContainsKey(actionName))
             return;
 
+        _availableActions.Remove(actionName);
+
         _actions.Remove(actionName);
         _actionConfigurationBuilders.Remove(actionName);
-
-        _availableActions.Remove(actionName);
 
         foreach (var shortcut in _shortcuts)
             foreach (var configuration in shortcut.Configurations.Where(a => actionName.Equals(a.Name, StringComparison.Ordinal)).ToList())
