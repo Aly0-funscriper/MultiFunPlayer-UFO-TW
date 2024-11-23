@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
 using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
@@ -44,6 +44,8 @@ public abstract class PluginBase : PropertyChangedBase
     #endregion
 
     #region Shortcut
+    protected IReadOnlyObservableConcurrentCollection<string> AvailableActions
+        => ShortcutManager.AvailableActions;
 
     protected void InvokeAction(string actionName, bool invokeDirectly = false)
         => ShortcutActionRunner.Invoke(actionName, invokeDirectly);
@@ -123,6 +125,7 @@ public abstract class PluginBase : PropertyChangedBase
     #endregion
 
     #region Property
+    protected IReadOnlyObservableConcurrentCollection<string> AvailableProperties => PropertyManager.AvailableProperties;
     protected TOut ReadProperty<TOut>(string propertyName, params object[] arguments) => PropertyManager.GetValue<TOut>(propertyName, arguments);
     protected TOut ReadProperty<TOut>(string propertyName) => PropertyManager.GetValue<TOut>(propertyName);
     protected TOut ReadProperty<T0, TOut>(string propertyName, T0 arg0) => PropertyManager.GetValue<T0, TOut>(propertyName, arg0);
