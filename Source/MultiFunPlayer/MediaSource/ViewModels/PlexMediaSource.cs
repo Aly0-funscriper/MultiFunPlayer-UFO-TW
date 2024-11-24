@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.UI;
 using NLog;
 using Stylet;
@@ -72,7 +72,9 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAg
 
         try
         {
-            client.Timeout = TimeSpan.FromMilliseconds(500);
+            if (connectionType == ConnectionType.AutoConnect)
+                client.Timeout = TimeSpan.FromMilliseconds(500);
+
             var message = new HttpRequestMessage(HttpMethod.Head, new Uri(ServerBaseUri, "/clients"));
             AddDefaultHeaders(message.Headers);
 

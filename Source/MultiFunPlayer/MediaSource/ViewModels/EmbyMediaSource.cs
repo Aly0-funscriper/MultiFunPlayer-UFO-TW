@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json;
@@ -68,7 +68,8 @@ internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IEventAg
 
         try
         {
-            client.Timeout = TimeSpan.FromMilliseconds(1000);
+            if (connectionType == ConnectionType.AutoConnect)
+                client.Timeout = TimeSpan.FromMilliseconds(500);
 
             var uri = new Uri(ServerBaseUri, "/System/Ping");
             var response = await client.GetAsync(uri, token);

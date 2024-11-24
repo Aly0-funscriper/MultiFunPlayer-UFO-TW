@@ -43,7 +43,9 @@ internal sealed class VlcMediaSource(IShortcutManager shortcutManager, IEventAgg
 
         try
         {
-            client.Timeout = TimeSpan.FromMilliseconds(500);
+            if (connectionType == ConnectionType.AutoConnect)
+                client.Timeout = TimeSpan.FromMilliseconds(500);
+
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($":{Password}")));
 
             var uri = new Uri($"http://{Endpoint.ToUriString()}/requests/status.json");

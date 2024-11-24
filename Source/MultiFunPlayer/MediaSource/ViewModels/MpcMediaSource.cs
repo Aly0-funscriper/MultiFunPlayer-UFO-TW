@@ -40,7 +40,8 @@ internal sealed class MpcMediaSource(IShortcutManager shortcutManager, IEventAgg
 
         try
         {
-            client.Timeout = TimeSpan.FromMilliseconds(500);
+            if (connectionType == ConnectionType.AutoConnect)
+                client.Timeout = TimeSpan.FromMilliseconds(500);
 
             var uri = new Uri($"http://{Endpoint.ToUriString()}");
             var response = await client.GetAsync(uri, token);
