@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json;
@@ -244,7 +244,6 @@ internal sealed class JellyfinMediaSource(IShortcutManager shortcutManager, IEve
             Logger.Debug("Refreshing devices");
 
             using var client = NetUtils.CreateHttpClient();
-            client.Timeout = TimeSpan.FromMilliseconds(5000);
 
             var uri = new Uri(ServerBaseUri, $"/Devices?ApiKey={ApiKey}");
             var response = await client.GetAsync(uri, token);

@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json;
@@ -247,7 +247,6 @@ internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IEventAg
             Logger.Debug("Refreshing devices");
 
             using var client = NetUtils.CreateHttpClient();
-            client.Timeout = TimeSpan.FromMilliseconds(5000);
 
             var uri = new Uri(ServerBaseUri, $"/Devices?api_key={ApiKey}");
             var response = await client.GetAsync(uri, token);

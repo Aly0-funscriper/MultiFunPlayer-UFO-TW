@@ -14,7 +14,11 @@ public static partial class NetUtils
         MaxConnectionsPerServer = 5
     };
 
-    public static HttpClient CreateHttpClient() => new(_handler, disposeHandler: false);
+    public static HttpClient CreateHttpClient()
+        => new(_handler, disposeHandler: false)
+        {
+            Timeout = TimeSpan.FromSeconds(5)
+        };
 
     public static EndPoint ParseEndpoint(string endpointString)
     {
