@@ -5,9 +5,7 @@ using MultiFunPlayer.Shortcut;
 using NLog;
 using Stylet;
 using StyletIoC;
-using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
 
 namespace MultiFunPlayer.Plugin;
 
