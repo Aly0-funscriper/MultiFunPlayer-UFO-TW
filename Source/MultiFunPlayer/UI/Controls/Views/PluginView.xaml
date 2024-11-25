@@ -60,10 +60,6 @@
                                                         <Setter Property="ToolTip" Value="Compiling"/>
                                                     </DataTrigger>
 
-                                                    <DataTrigger Binding="{Binding Value.State}" Value="{x:Static plugin:PluginState.Starting}">
-                                                        <Setter Property="ToolTip" Value="Starting"/>
-                                                    </DataTrigger>
-
                                                     <DataTrigger Binding="{Binding Value.State}" Value="{x:Static plugin:PluginState.Running}">
                                                         <Setter Property="ToolTip" Value="Running"/>
                                                     </DataTrigger>
@@ -74,10 +70,6 @@
 
                                                     <DataTrigger Binding="{Binding Value.State}" Value="{x:Static plugin:PluginState.Faulted}">
                                                         <Setter Property="ToolTip" Value="{Binding Value.Exception}"/>
-                                                    </DataTrigger>
-
-                                                    <DataTrigger Binding="{Binding Value.State}" Value="{x:Static plugin:PluginState.RanToCompletion}">
-                                                        <Setter Property="ToolTip" Value="Ran To Completion"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -96,11 +88,6 @@
                                                             <Setter Property="Kind" Value="Wrench"/>
                                                         </DataTrigger>
 
-                                                        <DataTrigger Binding="{Binding Value.State}" Value="{x:Static plugin:PluginState.Starting}">
-                                                            <Setter Property="Kind" Value="MotionPlayOutline"/>
-                                                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignWarningBrush}"/>
-                                                        </DataTrigger>
-
                                                         <DataTrigger Binding="{Binding Value.State}" Value="{x:Static plugin:PluginState.Running}">
                                                             <Setter Property="Kind" Value="Play"/>
                                                             <Setter Property="Foreground" Value="{DynamicResource MaterialDesignSuccessBrush}"/>
@@ -114,11 +101,6 @@
                                                         <DataTrigger Binding="{Binding Value.State}" Value="{x:Static plugin:PluginState.Faulted}">
                                                             <Setter Property="Kind" Value="ExclamationBold"/>
                                                             <Setter Property="Foreground" Value="{DynamicResource MaterialDesignErrorBrush}"/>
-                                                        </DataTrigger>
-
-                                                        <DataTrigger Binding="{Binding Value.State}" Value="{x:Static plugin:PluginState.RanToCompletion}">
-                                                            <Setter Property="Kind" Value="CheckBold"/>
-                                                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignSuccessBrush}"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -138,91 +120,24 @@
                                             Height="30"
                                             Padding="0"
                                             material:ButtonAssist.CornerRadius="0"
-                                            Click="{s:Action Start}"
-                                            IsEnabled="{Binding Value.CanStart}"
-                                            ToolTip="Start">
-                                        <material:PackIcon Kind="Play"/>
-                                    </Button>
-                                    <Button s:View.ActionTarget="{Binding Value}"
-                                            DockPanel.Dock="Right"
-                                            Style="{StaticResource MaterialDesignFlatButton}"
-                                            Width="30"
-                                            Height="30"
-                                            Padding="0"
-                                            material:ButtonAssist.CornerRadius="0"
-                                            Click="{s:Action Stop}"
-                                            IsEnabled="{Binding Value.CanStop}"
-                                            ToolTip="Stop">
-                                        <material:PackIcon Kind="Stop"/>
-                                    </Button>
-                                    <Button s:View.ActionTarget="{Binding Value}"
-                                            DockPanel.Dock="Right"
-                                            Style="{StaticResource MaterialDesignFlatButton}"
-                                            Width="30"
-                                            Height="30"
-                                            Padding="0"
-                                            material:ButtonAssist.CornerRadius="0"
-                                            Click="{s:Action Compile}"
+                                            Click="{s:Action QueueCompile}"
                                             IsEnabled="{Binding Value.CanCompile}"
                                             ToolTip="Compile">
                                         <material:PackIcon Kind="Replay"/>
                                     </Button>
 
-                                    <Button DockPanel.Dock="Right"
+                                    <Button s:View.ActionTarget="{Binding Value}"
+                                            DockPanel.Dock="Right"
                                             Style="{StaticResource MaterialDesignFlatButton}"
                                             Width="30"
                                             Height="30"
                                             Padding="0"
                                             material:ButtonAssist.CornerRadius="0"
-                                            Command="{x:Static material:DialogHost.OpenDialogCommand}"
-                                            ToolTip="Settings"
-                                            Visibility="{Binding Value.SettingsView, Converter={StaticResource NullVisibilityConverter}}">
+                                            Command="{s:Action ShowView}"
+                                            ToolTip="Open"
+                                            Visibility="{Binding Value.View, Converter={StaticResource NullVisibilityConverter}}">
                                         <material:PackIcon Kind="Cog"/>
-
-                                        <Button.CommandParameter>
-                                            <Grid s:View.ActionTarget="{Binding Value}"
-                                                  MinWidth="100"
-                                                  Margin="20">
-                                                <Button DockPanel.Dock="Top"
-                                                        Style="{StaticResource MaterialDesignFlatButton}"
-                                                        Width="24"
-                                                        Height="24"
-                                                        Margin="0 -15 -15 0"
-                                                        Padding="0"
-                                                        HorizontalAlignment="Right"
-                                                        VerticalAlignment="Top"
-                                                        material:RippleAssist.Feedback="{DynamicResource MaterialDesignBody}"
-                                                        Command="{x:Static material:DialogHost.CloseDialogCommand}"
-                                                        Foreground="{DynamicResource MaterialDesignBody}">
-                                                    <material:PackIcon Width="20"
-                                                                       Height="20"
-                                                                       Kind="Close"/>
-                                                </Button>
-
-                                                <ContentPresenter Content="{Binding Value.SettingsView}"/>
-                                            </Grid>
-                                        </Button.CommandParameter>
                                     </Button>
-
-                                    <ToggleButton DockPanel.Dock="Right"
-                                                  Style="{StaticResource MaterialDesignToolBarToggleButton}"
-                                                  Width="30"
-                                                  Height="30"
-                                                  Padding="0"
-                                                  material:RippleAssist.Feedback="{DynamicResource PrimaryHueMidBrush}"
-                                                  Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                  IsChecked="{Binding Value.AutoStartEnabled}"
-                                                  ToolTip="Auto-start">
-                                        <material:PackIcon Width="18"
-                                                           Height="18"
-                                                           Kind="AutoStart"
-                                                           Opacity=".38"/>
-                                        <material:ToggleButtonAssist.OnContent>
-                                            <material:PackIcon Width="18"
-                                                               Height="18"
-                                                               Kind="AutoStart"/>
-                                        </material:ToggleButtonAssist.OnContent>
-                                    </ToggleButton>
                                 </DockPanel>
                             </material:Card>
                         </DataTemplate>

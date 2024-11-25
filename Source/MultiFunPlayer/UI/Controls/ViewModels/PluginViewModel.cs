@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using MultiFunPlayer.Plugin;
 using MultiFunPlayer.Shortcut;
 using Newtonsoft.Json.Linq;
@@ -9,7 +9,7 @@ using System.IO;
 
 namespace MultiFunPlayer.UI.Controls.ViewModels;
 
-internal sealed class PluginViewModel : Screen, IHandle<SettingsMessage>, IDisposable
+internal sealed class PluginViewModel : Screen, IDisposable
 {
     private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
 
@@ -18,10 +18,8 @@ internal sealed class PluginViewModel : Screen, IHandle<SettingsMessage>, IDispo
 
     public ObservableConcurrentDictionary<FileInfo, PluginContainer> Containers { get; }
 
-    public PluginViewModel(IEventAggregator eventAggregator,  IShortcutManager shortcutManager)
+    public PluginViewModel(IShortcutManager shortcutManager)
     {
-        eventAggregator.Subscribe(this);
-
         _shortcutManager = shortcutManager;
 
         var pluginsDirectory = Directory.CreateDirectory("Plugins");
@@ -40,14 +38,14 @@ internal sealed class PluginViewModel : Screen, IHandle<SettingsMessage>, IDispo
         _watcher.Deleted += OnWatcherDeleted;
 
         foreach (var fileInfo in pluginsDirectory.SafeEnumerateFiles("*.cs", IOUtils.CreateEnumerationOptions(true)))
-            AddContainer(fileInfo, compile: false);
+            AddContainer(fileInfo);
     }
 
     private void OnWatcherRenamed(object sender, RenamedEventArgs e)
     {
         Logger.Trace("Received watcher renamed event [From: \"{0}\", To: \"{1}\"", e.OldFullPath, e.FullPath);
 
-        if (Directory.Exists(e.FullPath))
+        if (Directory.Exists(e.OldFullPath) || Directory.Exists(e.FullPath))
         {
             foreach (var (pluginFile, _) in Containers)
                 if (IsBasePathOf(e.OldFullPath, pluginFile.DirectoryName))
@@ -55,7 +53,7 @@ internal sealed class PluginViewModel : Screen, IHandle<SettingsMessage>, IDispo
 
             var newDirectory = new DirectoryInfo(e.FullPath);
             foreach(var pluginFile in newDirectory.SafeEnumerateFiles("*.cs", IOUtils.CreateEnumerationOptions(true)))
-                AddContainer(pluginFile, compile: true);
+                AddContainer(pluginFile);
 
             static bool IsBasePathOf(string basePath, string subPath)
             {
@@ -63,10 +61,10 @@ internal sealed class PluginViewModel : Screen, IHandle<SettingsMessage>, IDispo
                 return relativePath == "." || relativePath.EndsWith("..");
             }
         }
-        else if (File.Exists(e.FullPath))
+        else if (File.Exists(e.OldFullPath) || File.Exists(e.FullPath))
         {
             RemoveContainer(new FileInfo(e.OldFullPath));
-            AddContainer(new FileInfo(e.FullPath), compile: true);
+            AddContainer(new FileInfo(e.FullPath));
         }
     }
 
@@ -79,7 +77,7 @@ internal sealed class PluginViewModel : Screen, IHandle<SettingsMessage>, IDispo
     private void OnWatcherCreated(object sender, FileSystemEventArgs e)
     {
         Logger.Trace("Received watcher created event [Path: \"{0}\"", e.FullPath);
-        AddContainer(new FileInfo(e.FullPath), compile: true);
+        AddContainer(new FileInfo(e.FullPath));
     }
 
     private void RemoveContainer(FileInfo fileInfo)
@@ -89,13 +87,13 @@ internal sealed class PluginViewModel : Screen, IHandle<SettingsMessage>, IDispo
 
         Logger.Debug("Removing container [Path: \"{0}\"", fileInfo);
 
-        container.Dispose();
-        Containers.Remove(fileInfo);
-
         container.UnregisterActions(_shortcutManager);
+        container.Dispose();
+
+        Containers.Remove(fileInfo);
     }
 
-    private void AddContainer(FileInfo fileInfo, bool compile)
+    private void AddContainer(FileInfo fileInfo)
     {
         if (!fileInfo.AsRefreshed().Exists)
             return;
@@ -109,11 +107,9 @@ internal sealed class PluginViewModel : Screen, IHandle<SettingsMessage>, IDispo
         Logger.Debug("Adding container [Path: \"{0}\"", fileInfo);
 
         var container = new PluginContainer(fileInfo);
-        Containers.Add(fileInfo, container);
-        if (compile)
-            container.Compile();
-
         container.RegisterActions(_shortcutManager);
+
+        Containers.Add(fileInfo, container);
     }
 
     public void Handle(SettingsMessage message)

@@ -1,20 +1,24 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
 using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
+using MultiFunPlayer.UI;
+using MultiFunPlayer.UI.Dialogs.ViewModels;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using NLog;
 using Stylet;
 using StyletIoC;
 using System.Diagnostics.CodeAnalysis;
+using System.Windows;
 
 namespace MultiFunPlayer.Plugin;
 
-public abstract class PluginBase : PropertyChangedBase
+[JsonObject(MemberSerialization = MemberSerialization.OptIn)]
+public abstract class PluginBase : Screen
 {
     private readonly MessageProxy _messageProxy;
-
-    internal CancellationTokenSource InternalCancellationSource;
-    internal event EventHandler<Exception> OnInternalException;
+    protected internal readonly CancellationTokenSource CancellationSource;
 
     [Inject] internal IDeviceAxisValueProvider DeviceAxisValueProvider { get; set; }
     [Inject] internal IEventAggregator EventAggregator { get; set; }
@@ -23,11 +27,13 @@ public abstract class PluginBase : PropertyChangedBase
     [Inject] internal IPropertyManager PropertyManager { get; set; }
 
     protected Logger Logger { get; }
+    protected CancellationToken CancellationToken => CancellationSource.Token;
 
     protected PluginBase()
     {
         _messageProxy = new(HandleMessageInternal);
         Logger = LogManager.GetLogger(GetType().FullName);
+        CancellationSource = new CancellationTokenSource();
     }
 
     #region DeviceAxis
@@ -180,12 +186,9 @@ public abstract class PluginBase : PropertyChangedBase
             else if (e is SyncRequestMessage syncRequestMessage) HandleMessage(syncRequestMessage);
             else if (e is PostScriptSearchMessage postScriptSearchMessage) HandleMessage(postScriptSearchMessage);
         }
-        catch (Exception exception)
-        {
-            OnInternalException?.Invoke(this, exception);
-        }
+        catch { }
 
-        var cancellationSource = InternalCancellationSource;
+        var cancellationSource = CancellationSource;
         if (cancellationSource == null)
             return;
         if (cancellationSource.IsCancellationRequested)
@@ -214,10 +217,7 @@ public abstract class PluginBase : PropertyChangedBase
             valueTask.Preserve().GetAwaiter().GetResult();
         }
         catch (OperationCanceledException) { }
-        catch (Exception exception)
-        {
-            OnInternalException?.Invoke(this, exception);
-        }
+        catch { }
     }
 
     private sealed class MessageProxy(Action<object> callback) : IHandle<object>
@@ -226,89 +226,49 @@ public abstract class PluginBase : PropertyChangedBase
     }
     #endregion
 
-    internal void InternalInitialize(CancellationToken cancellationToken)
+    public virtual UIElement CreateView() => null;
+
+    public void ShowView()
     {
-        InternalCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        EventAggregator.Subscribe(_messageProxy);
+        if (View != null)
+            _ = DialogHelper.ShowOnUIThreadAsync(new PluginDialog(this), "RootDialog");
     }
 
-    protected virtual void Dispose(bool disposing) { }
+    public void CloseView()
+    {
+        if (View != null)
+            DialogHelper.CloseOnUIThread(this, "RootDialog");
+    }
+
+    protected virtual void OnInitialize() { }
+
+    internal void InternalInitialize()
+    {
+        EventAggregator.Subscribe(_messageProxy);
+        OnInitialize();
+    }
+
+    protected virtual void OnDispose() { }
 
     [SuppressMessage("Usage", "CA1816:Dispose methods should call SuppressFinalize", Justification = "Internal dispose")]
     internal void InternalDispose()
     {
         EventAggregator.Unsubscribe(_messageProxy);
 
-        InternalCancellationSource?.Cancel();
-        InternalCancellationSource?.Dispose();
-        InternalCancellationSource = null;
+        CloseView();
 
-        Dispose(disposing: true);
+        CancellationSource.Cancel();
+        CancellationSource.Dispose();
+
+        OnDispose();
         GC.SuppressFinalize(this);
     }
-}
 
-public abstract class SyncPluginBase : PluginBase
-{
-    protected virtual void Execute(CancellationToken cancellationToken)
+    public virtual void HandleSettings(JObject settings, SettingsAction action)
     {
-        try { cancellationToken.WaitHandle.WaitOne(); }
-        catch { }
-
-        throw new OperationCanceledException();
-    }
-
-    internal void InternalExecute()
-    {
-        var internalException = default(Exception);
-        void HandleInternalException(object _, Exception e)
-        {
-            if (Interlocked.CompareExchange(ref internalException, e, null) == null)
-                InternalCancellationSource.Cancel();
-        }
-
-        try
-        {
-            OnInternalException += HandleInternalException;
-            Execute(InternalCancellationSource.Token);
-        }
-        catch (OperationCanceledException) when (internalException != null) { internalException.Throw(); }
-        catch (Exception e) when (internalException != null) { throw new AggregateException(internalException, e); }
-        finally { OnInternalException -= HandleInternalException; }
-    }
-}
-
-public abstract class AsyncPluginBase : PluginBase
-{
-    protected virtual async Task ExecuteAsync(CancellationToken cancellationToken)
-    {
-        if (cancellationToken.IsCancellationRequested)
-        {
-            await Task.FromCanceled(cancellationToken);
-            return;
-        }
-
-        var taskCompletionSource = new TaskCompletionSource();
-        await using var registration = cancellationToken.Register(() => taskCompletionSource.TrySetCanceled(cancellationToken), useSynchronizationContext: false);
-        await taskCompletionSource.Task;
-    }
-
-    internal async Task InternalExecuteAsync()
-    {
-        var internalException = default(Exception);
-        void HandleInternalException(object _, Exception e)
-        {
-            if (Interlocked.CompareExchange(ref internalException, e, null) == null)
-                InternalCancellationSource.Cancel();
-        }
-
-        try
-        {
-            OnInternalException += HandleInternalException;
-            await ExecuteAsync(InternalCancellationSource.Token);
-        }
-        catch (OperationCanceledException) when (internalException != null) { internalException.Throw(); }
-        catch (Exception e) when (internalException != null) { throw new AggregateException(internalException, e); }
-        finally { OnInternalException -= HandleInternalException; }
+        if (action == SettingsAction.Saving)
+            settings.MergeAll(JObject.FromObject(this));
+        else if (action == SettingsAction.Loading)
+            settings.Populate(this);
     }
 }

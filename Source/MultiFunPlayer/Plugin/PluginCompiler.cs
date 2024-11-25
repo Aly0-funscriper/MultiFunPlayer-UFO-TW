@@ -22,16 +22,19 @@ namespace MultiFunPlayer.Plugin;
 
 internal sealed class PluginCompilationResult : IDisposable
 {
-    public Exception Exception { get; private set; }
-    public PluginSettingsBase Settings { get; private set; }
-    public UIElement SettingsView { get; private set; }
+    private PluginAssemblyLoadContext _context;
 
-    private Func<PluginBase> PluginFactory { get; set; }
-    private PluginAssemblyLoadContext Context { get; set; }
+    public Exception Exception { get; }
+    public PluginBase PluginInstance { get; private set; }
 
     public bool Success => Exception == null;
 
-    private PluginCompilationResult() { }
+    private PluginCompilationResult(Exception e) => Exception = e;
+    private PluginCompilationResult(PluginAssemblyLoadContext context, PluginBase pluginInstance)
+    {
+        _context = context;
+        PluginInstance = pluginInstance;
+    }
 
     public static PluginCompilationResult FromFailure(PluginAssemblyLoadContext context, Exception e)
     {
@@ -40,24 +43,18 @@ internal sealed class PluginCompilationResult : IDisposable
         context = null;
 #pragma warning restore IDE0059 // Unnecessary assignment of a value
 
-        return new() { Exception = e };
+        return new(e);
     }
 
-    public static PluginCompilationResult FromSuccess(PluginAssemblyLoadContext context, Func<PluginBase> pluginFactory)
-        => new() { Context = context, PluginFactory = pluginFactory };
-    public static PluginCompilationResult FromSuccess(PluginAssemblyLoadContext context, Func<PluginBase> pluginFactory, PluginSettingsBase settings, UIElement settingsView)
-        => new() { Context = context, PluginFactory = pluginFactory, Settings = settings, SettingsView = settingsView };
-
-    public PluginBase CreatePluginInstance() => PluginFactory?.Invoke();
+    public static PluginCompilationResult FromSuccess(PluginAssemblyLoadContext context, PluginBase pluginInstance) => new(context, pluginInstance);
 
     private void Dispose(bool disposing)
     {
-        PluginFactory = null;
-        SettingsView = null;
-        Settings = null;
+        PluginInstance?.InternalDispose();
+        PluginInstance = null;
 
-        Context?.Dispose();
-        Context = null;
+        _context?.Dispose();
+        _context = null;
     }
 
     public void Dispose()
@@ -69,8 +66,6 @@ internal sealed class PluginCompilationResult : IDisposable
 
 internal static partial class PluginCompiler
 {
-    private readonly static IReadOnlyCollection<string> ValidPluginBaseClasses = [nameof(SyncPluginBase), nameof(AsyncPluginBase)];
-
     private static Channel<Action> _compileQueue;
     private static Task _compileTask;
 
@@ -155,13 +150,20 @@ internal static partial class PluginCompiler
             var pluginClasses = syntaxTree.GetRoot()
                                           .DescendantNodes()
                                           .OfType<ClassDeclarationSyntax>()
-                                          .Where(s => s.BaseList.Types.Any(x => ValidPluginBaseClasses.Contains(x.ToString())))
+                                          .Where(s => s.BaseList.Types.Any(x => string.Equals(x.ToString(), nameof(PluginBase), StringComparison.OrdinalIgnoreCase)))
                                           .ToList();
 
             if (pluginClasses.Count == 0)
-                return PluginCompilationResult.FromFailure(context, new PluginCompileException("Unable to find base Plugin class"));
+                return PluginCompilationResult.FromFailure(context, new PluginCompileException("Unable to find class inheriting PluginBase"));
             if (pluginClasses.Count > 1)
-                return PluginCompilationResult.FromFailure(context, new PluginCompileException("Found more than one base Plugin class"));
+                return PluginCompilationResult.FromFailure(context, new PluginCompileException("Found more than one class inheriting PluginBase"));
+
+            var pluginConstructors = syntaxTree.GetRoot()
+                                               .DescendantNodes()
+                                               .OfType<ConstructorDeclarationSyntax>();
+
+            if (pluginConstructors.Any())
+                return PluginCompilationResult.FromFailure(context, new PluginCompileException("Constructors are not allowed, use OnInitialize instead"));
 
             var assemblyName = $"Plugin_{Path.GetFileNameWithoutExtension(pluginFile.Name)}";
             var encoded = CSharpSyntaxTree.Create(
@@ -220,53 +222,27 @@ internal static partial class PluginCompiler
             if (pluginType == null)
                 return PluginCompilationResult.FromFailure(context, new PluginCompileException("Unable to find exported Plugin type"));
 
-            var pluginConstructors = pluginType.GetConstructors();
-            if (pluginConstructors.Length == 0)
-                return PluginCompilationResult.FromFailure(context, new PluginCompileException("No public plugin constructor found"));
+            return PluginCompilationResult.FromSuccess(context, BuildUpPluginInstance(Activator.CreateInstance(pluginType) as PluginBase));
 
-            if (pluginConstructors.Length != 1)
-                return PluginCompilationResult.FromFailure(context, new PluginCompileException("Plugin can only have one constructor"));
-
-            var constructorParameters = pluginConstructors[0].GetParameters();
-            if (constructorParameters.Length > 1)
-                return PluginCompilationResult.FromFailure(context, new PluginCompileException("Plugin constructor can only have zero or one parameters"));
-
-            var settingsType = constructorParameters.FirstOrDefault()?.ParameterType;
-            if (settingsType?.IsAssignableTo(typeof(PluginSettingsBase)) == false)
-                return PluginCompilationResult.FromFailure(context, new PluginCompileException($"Plugin constructor parameter must extend \"{nameof(PluginSettingsBase)}\""));
-
-            if (settingsType == null)
+            PluginBase BuildUpPluginInstance(PluginBase instance)
             {
-                return PluginCompilationResult.FromSuccess(context, CreatePluginInstance);
-
-                PluginBase CreatePluginInstance()
-                {
-                    var instance = Activator.CreateInstance(pluginType) as PluginBase;
-                    Container.BuildUp(instance);
-                    return instance;
-                }
+                CreateAndBindPluginInstanceView(instance);
+                Container.BuildUp(instance);
+                instance.InternalInitialize();
+                return instance;
             }
-            else
-            {
-                var settings = (PluginSettingsBase)Activator.CreateInstance(settingsType);
 
-                var settingsView = default(UIElement);
+            UIElement CreateAndBindPluginInstanceView(PluginBase instance)
+            {
+                var view = default(UIElement);
                 Execute.OnUIThreadSync(() =>
                 {
-                    settingsView = settings.CreateView();
-
-                    if (settingsView != null)
-                        ViewManager.BindViewToModel(settingsView, settings);
+                    view = instance.CreateView() ?? UIUtils.CreateViewFromFile(Path.ChangeExtension(pluginFile.FullName, ".xaml"));
+                    if (view != null)
+                        ViewManager.BindViewToModel(view, instance);
                 });
 
-                return PluginCompilationResult.FromSuccess(context, CreatePluginInstance, settings, settingsView);
-
-                PluginBase CreatePluginInstance()
-                {
-                    var instance = Activator.CreateInstance(pluginType, [settings]) as PluginBase;
-                    Container.BuildUp(instance);
-                    return instance;
-                }
+                return view;
             }
         }
         catch (Exception e)

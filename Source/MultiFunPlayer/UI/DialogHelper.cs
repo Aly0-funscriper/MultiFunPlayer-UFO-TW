@@ -46,17 +46,47 @@ internal static class DialogHelper
     public static async Task<object> ShowAsync(object model, string dialogName)
     {
         var view = ViewManager.CreateAndBindViewForModelIfNecessary(model);
-        var session = DialogHost.GetDialogSession(dialogName);
-        var sessionContext = (session?.Content as FrameworkElement)?.DataContext;
-        if (model.Equals(sessionContext))
-            return null;
 
-        if (DialogHost.IsDialogOpen(dialogName))
-            DialogHost.Close(dialogName);
+        var session = DialogHost.GetDialogSession(dialogName);
+        if (session != null)
+        {
+            var sessionContext = (session.Content as FrameworkElement)?.DataContext;
+            if (sessionContext?.Equals(model) == true)
+                return null;
+
+            if (!session.IsEnded)
+                session.Close();
+        }
 
         (model as IScreenState)?.Activate();
         var result = await DialogHost.Show(view, dialogName);
         (model as IScreenState)?.Deactivate();
         return result;
+    }
+
+    public static void CloseOnUIThread(object model, string dialogName) => Execute.OnUIThreadSync(() =>
+    {
+        var session = DialogHost.GetDialogSession(dialogName);
+        if (session == null)
+            return;
+
+        var sessionContext = (session.Content as FrameworkElement)?.DataContext;
+        if (sessionContext?.Equals(model) != true)
+            return;
+
+        if (!session.IsEnded)
+            session.Close();
+
+        (model as IScreenState)?.Deactivate();
+    });
+
+    public static void SafeClose(string dialogName) => SafeClose(dialogName, null);
+    public static void SafeClose(string dialogName, object parameter)
+    {
+        try
+        {
+            if (DialogHost.GetDialogSession(dialogName) is DialogSession { IsEnded: false } session)
+                session.Close(parameter);
+        } catch { }
     }
 }

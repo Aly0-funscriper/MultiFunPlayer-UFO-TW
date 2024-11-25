@@ -1,11 +1,11 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Settings;
 using MultiFunPlayer.Shortcut;
-using Newtonsoft.Json;
+using MultiFunPlayer.UI;
+using MultiFunPlayer.UI.Dialogs.ViewModels;
 using NLog;
 using Stylet;
 using System.IO;
-using System.Runtime.Serialization;
 using System.Windows;
 
 namespace MultiFunPlayer.Plugin;
@@ -14,157 +14,47 @@ internal enum PluginState
 {
     Idle,
     Compiling,
-    Starting,
     Running,
     Stopping,
-    Faulted,
-    RanToCompletion,
+    Faulted
 }
 
-[JsonObject(MemberSerialization.OptIn)]
-internal sealed class PluginContainer(FileInfo pluginFile) : PropertyChangedBase, IDisposable
+internal sealed class PluginContainer : PropertyChangedBase, IDisposable
 {
     private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
 
     private PluginCompilationResult _compilationResult;
-    private CancellationTokenSource _cancellationSource;
-    private Thread _thread;
 
-    [JsonProperty] public bool AutoStartEnabled { get; set; } = false;
-
-    public FileInfo PluginFile { get; } = pluginFile;
+    public FileInfo PluginFile { get; }
     public Exception Exception { get; private set; }
-    public PluginState State { get; private set; } = PluginState.Idle;
+    public PluginState State { get; private set; }
 
     public string Name => Path.GetFileNameWithoutExtension(PluginFile.Name);
-    public UIElement SettingsView => _compilationResult?.SettingsView;
+    public UIElement View => _compilationResult?.PluginInstance?.View;
 
-    public bool CanStart => State == PluginState.Idle || State == PluginState.RanToCompletion || (State == PluginState.Faulted && Exception is not PluginCompileException);
-    public bool CanStop => State == PluginState.Running;
-    public bool CanCompile => State is PluginState.Idle or PluginState.Faulted or PluginState.RanToCompletion;
-    public bool IsBusy => State is not PluginState.Idle and not PluginState.RanToCompletion and not PluginState.Running;
+    public bool CanCompile => State is not PluginState.Compiling;
 
-    public void Start()
+    public PluginContainer(FileInfo pluginFile)
     {
-        if (!CanStart)
-            return;
-
-        if (_compilationResult?.Success != true)
-        {
-            QueueCompile(() => {
-                if (_compilationResult?.Success == true)
-                    Start();
-            });
-            return;
-        }
-
-        State = PluginState.Starting;
-
-        _cancellationSource = new CancellationTokenSource();
-        _thread = new Thread(Execute) { IsBackground = true };
-        _thread.Start();
-    }
-
-    private void Execute()
-    {
-        var plugin = default(PluginBase);
-        try
-        {
-            Logger.Info($"Starting \"{Name}\"");
-
-            plugin = _compilationResult.CreatePluginInstance();
-            plugin.InternalInitialize(_cancellationSource.Token);
-
-            State = PluginState.Running;
-
-            try
-            {
-                if (plugin is SyncPluginBase syncPlugin)
-                {
-                    syncPlugin.InternalExecute();
-                }
-                else if (plugin is AsyncPluginBase asyncPlugin)
-                {
-                    // https://stackoverflow.com/a/9343733 ¯\_(ツ)_/¯
-                    var task = asyncPlugin.InternalExecuteAsync();
-                    task.GetAwaiter().GetResult();
-                }
-            }
-            catch (OperationCanceledException) { }
-
-            Logger.Debug($"\"{Name}\" ran to completion");
-        }
-        catch (Exception e)
-        {
-            Logger.Error(e, $"{Name} failed with exception");
-            Exception = e;
-        }
-        finally
-        {
-            State = PluginState.Stopping;
-
-            try
-            {
-                plugin?.InternalDispose();
-                HandleSettings(SettingsAction.Saving);
-            }
-            catch (Exception e)
-            {
-                Exception = Exception == null ? e : new AggregateException(Exception, e);
-            }
-
-            State = Exception != null ? PluginState.Faulted : PluginState.RanToCompletion;
-
-            _cancellationSource?.Dispose();
-            _cancellationSource = null;
-            _thread = null;
-        }
-    }
-
-    public void Stop()
-    {
-        if (!CanStop)
-            return;
-
-        _ = Task.Run(() =>
-        {
-            State = PluginState.Stopping;
-            Dispose();
-        });
-    }
-
-    public void Compile()
-    {
-        if (!CanCompile)
-            return;
-
+        PluginFile = pluginFile;
         QueueCompile();
     }
 
-    private void QueueCompile(Action callback = null)
+    public void QueueCompile()
     {
         if (!PluginFile.Exists || State == PluginState.Compiling)
             return;
 
         State = PluginState.Compiling;
-        PluginCompiler.QueueCompile(PluginFile, x => {
-            OnCompile(x);
-            callback?.Invoke();
-        });
-
-        void OnCompile(PluginCompilationResult result)
+        PluginCompiler.QueueCompile(PluginFile, result =>
         {
             if (_compilationResult != null)
-            {
-                State = PluginState.Stopping;
                 Dispose();
-                State = PluginState.Idle;
-            }
 
             _compilationResult = result;
             if (_compilationResult.Success)
             {
-                State = PluginState.Idle;
+                State = PluginState.Running;
                 Exception = null;
             }
             else
@@ -174,25 +64,37 @@ internal sealed class PluginContainer(FileInfo pluginFile) : PropertyChangedBase
             }
 
             HandleSettings(SettingsAction.Loading);
-            NotifyOfPropertyChange(nameof(SettingsView));
-        }
+            NotifyOfPropertyChange(nameof(View));
+        });
+    }
+
+    public void ShowView()
+    {
+        if (_compilationResult?.Success == true)
+            _ = DialogHelper.ShowOnUIThreadAsync(new PluginDialog(_compilationResult.PluginInstance), "PluginDialog");
+    }
+
+    public void CloseView()
+    {
+        if (_compilationResult?.Success == true)
+            DialogHelper.SafeClose("PluginDialog");
     }
 
     public void RegisterActions(IShortcutManager s)
     {
-        s.RegisterAction($"Plugin::{Name}::Start", Start);
-        s.RegisterAction($"Plugin::{Name}::Stop", Stop);
+        s.RegisterAction($"Plugin::{Name}::ShowView", () => _compilationResult?.PluginInstance?.ShowView());
+        s.RegisterAction($"Plugin::{Name}::CloseView", () => _compilationResult?.PluginInstance?.CloseView());
     }
 
     public void UnregisterActions(IShortcutManager s)
     {
-        s.UnregisterAction($"Plugin::{Name}::Start");
-        s.UnregisterAction($"Plugin::{Name}::Stop");
+        s.UnregisterAction($"Plugin::{Name}::ShowView");
+        s.UnregisterAction($"Plugin::{Name}::CloseView");
     }
 
     private void HandleSettings(SettingsAction action)
     {
-        if (_compilationResult == null || _compilationResult.Settings == null)
+        if (_compilationResult?.Success != true)
             return;
 
         var settingsFileName = $"{Path.GetFileNameWithoutExtension(PluginFile.Name)}.config.json";
@@ -201,7 +103,7 @@ internal sealed class PluginContainer(FileInfo pluginFile) : PropertyChangedBase
 
         try
         {
-            _compilationResult.Settings.HandleSettings(settings, action);
+            _compilationResult.PluginInstance.HandleSettings(settings, action);
         }
         catch (Exception e)
         {
@@ -212,30 +114,18 @@ internal sealed class PluginContainer(FileInfo pluginFile) : PropertyChangedBase
             SettingsHelper.Write(settings, settingsPath);
     }
 
-    [OnSerialized]
-    internal void OnSerializedMethod(StreamingContext context)
-    {
-        HandleSettings(SettingsAction.Saving);
-    }
-
-    [OnDeserialized]
-    internal void OnDeserializedMethod(StreamingContext context)
-    {
-        if (AutoStartEnabled)
-            Start();
-    }
-
     private void Dispose(bool disposing)
     {
-        _cancellationSource?.Cancel();
-        _thread?.Join();
+        State = PluginState.Stopping;
 
-        _cancellationSource?.Dispose();
+        CloseView();
+
+        HandleSettings(SettingsAction.Saving);
+
         _compilationResult?.Dispose();
-
-        _thread = null;
-        _cancellationSource = null;
         _compilationResult = null;
+
+        NotifyOfPropertyChange(nameof(View));
     }
 
     public void Dispose()
