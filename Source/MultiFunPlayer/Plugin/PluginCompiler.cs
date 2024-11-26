@@ -1,4 +1,4 @@
-﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Emit;
@@ -192,11 +192,6 @@ internal static partial class PluginCompiler
                 pdbFilePath: pdbPath
             );
 
-            var embeddedTexts = new List<EmbeddedText>
-            {
-                EmbeddedText.FromSource(sourcePath, sourceText)
-            };
-
             using var peStream = new MemoryStream();
             using var pdbStream = new MemoryStream();
 
@@ -204,7 +199,7 @@ internal static partial class PluginCompiler
                 peStream: peStream,
                 pdbStream: pdbStream,
                 options: emitOptions,
-                embeddedTexts: embeddedTexts
+                embeddedTexts: [EmbeddedText.FromSource(sourcePath, sourceText)]
             );
 
             if (!emitResult.Success)
