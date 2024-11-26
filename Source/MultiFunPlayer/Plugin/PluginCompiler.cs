@@ -1,4 +1,4 @@
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Emit;
@@ -128,19 +128,27 @@ internal static partial class PluginCompiler
         {
             var references = ReferenceCache.ToList();
 
-            var pluginSource = File.ReadAllText(pluginFile.FullName);
-            LoadPluginReferences(pluginFile, pluginSource, context, references);
+            var sourceBuffer = File.ReadAllBytes(pluginFile.FullName);
+            var encoding = sourceBuffer switch
+            {
+                [0xff, 0xfe, 0x00, 0x00, ..] => (Encoding)new UTF32Encoding(bigEndian: false, byteOrderMark: true),
+                [0x00, 0x00, 0xfe, 0xff, ..] => new UTF32Encoding(bigEndian: true, byteOrderMark: true),
+                [0xef, 0xbb, 0xbf, ..] => new UTF8Encoding(encoderShouldEmitUTF8Identifier: true),
+                [0xff, 0xfe, ..] => new UnicodeEncoding(bigEndian: false, byteOrderMark: true),
+                [0xfe, 0xff, ..] => new UnicodeEncoding(bigEndian: true, byteOrderMark: true),
+                _ => new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
+            };
+
+            LoadPluginReferences(pluginFile, encoding.GetString(sourceBuffer), context, references);
 
             var sourcePath = pluginFile.FullName;
             var pdbPath = Path.ChangeExtension(sourcePath, ".pdb");
 
-            var sourceBuffer = Encoding.UTF8.GetBytes(pluginSource);
             var sourceText = SourceText.From(
                 sourceBuffer,
                 sourceBuffer.Length,
-                Encoding.UTF8,
-                canBeEmbedded: true
-            );
+                encoding,
+                canBeEmbedded: true);
 
             var syntaxTree = CSharpSyntaxTree.ParseText(
                 sourceText,
@@ -170,7 +178,7 @@ internal static partial class PluginCompiler
                 syntaxTree.GetRoot() as CSharpSyntaxNode,
                 null,
                 sourcePath,
-                Encoding.UTF8
+                encoding
             );
 
             var compilationOptions = new CSharpCompilationOptions(
