@@ -71,13 +71,13 @@ internal sealed class PluginContainer : PropertyChangedBase, IDisposable
     public void ShowView()
     {
         if (_compilationResult?.Success == true)
-            _ = DialogHelper.ShowOnUIThreadAsync(new PluginDialog(_compilationResult.PluginInstance), "PluginDialog");
+            _ = DialogHelper.ShowAsync(() => new PluginDialog(_compilationResult.PluginInstance), "PluginDialog");
     }
 
     public void CloseView()
     {
         if (_compilationResult?.Success == true)
-            DialogHelper.SafeClose("PluginDialog");
+            DialogHelper.Close("PluginDialog");
     }
 
     public void RegisterActions(IShortcutManager s)

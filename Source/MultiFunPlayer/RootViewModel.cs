@@ -57,9 +57,9 @@ internal sealed class RootViewModel : Conductor<IScreen>.Collection.AllActive, I
         base.OnActivate();
     }
 
-    public void OnInformationClick() => _ = DialogHelper.ShowOnUIThreadAsync(Information, "RootDialog");
-    public void OnSettingsClick() => _ = DialogHelper.ShowOnUIThreadAsync(Settings, "RootDialog");
-    public void OnPluginClick() => _ = DialogHelper.ShowOnUIThreadAsync(Plugin, "RootDialog");
+    public void OnInformationClick() => _ = DialogHelper.ShowAsync(Information, "RootDialog");
+    public void OnSettingsClick() => _ = DialogHelper.ShowAsync(Settings, "RootDialog");
+    public void OnPluginClick() => _ = DialogHelper.ShowAsync(Plugin, "RootDialog");
 
     protected override void OnViewLoaded()
     {

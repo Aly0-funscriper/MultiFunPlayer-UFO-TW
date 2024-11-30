@@ -231,13 +231,13 @@ public abstract class PluginBase : Screen
     public void ShowView()
     {
         if (View != null)
-            _ = DialogHelper.ShowOnUIThreadAsync(new PluginDialog(this), "RootDialog");
+            _ = DialogHelper.ShowAsync(() => new PluginDialog(this), "RootDialog");
     }
 
     public void CloseView()
     {
         if (View != null)
-            DialogHelper.CloseOnUIThread(this, "RootDialog");
+            DialogHelper.CloseByModel(this);
     }
 
     protected virtual void OnInitialize() { }

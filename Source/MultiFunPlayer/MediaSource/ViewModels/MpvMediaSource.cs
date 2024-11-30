@@ -58,7 +58,7 @@ internal sealed class MpvMediaSource(IShortcutManager shortcutManager, IEventAgg
             }
             else
             {
-                var result = (MessageBoxResult)await DialogHelper.ShowAsync(new MessageBoxDialog("Mpv executable not found!\nWould you like to download it now?", MessageBoxButton.YesNo), "RootDialog");
+                var result = await DialogHelper.ShowAsync<MessageBoxResult>(new MessageBoxDialog("Mpv executable not found!\nWould you like to download it now?", MessageBoxButton.YesNo), "RootDialog");
                 if (result != MessageBoxResult.Yes)
                     throw new MediaSourceException("Could not find mpv executable! Set path to mpv.exe manually or download latest release from settings.");
 
