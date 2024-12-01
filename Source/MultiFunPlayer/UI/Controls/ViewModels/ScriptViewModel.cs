@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using Stylet;
 using System.Diagnostics;
 using System.IO;
@@ -604,13 +604,13 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
     {
         void UpdateCurrentPosition(double newPosition)
         {
-            foreach (var axis in DeviceAxis.All)
-                Monitor.Enter(AxisStates[axis]);
+            foreach (var (_, state) in AxisStates)
+                state.BeginUpdate();
 
             SetMediaPositionInternal(newPosition);
 
-            foreach (var axis in DeviceAxis.All)
-                Monitor.Exit(AxisStates[axis]);
+            foreach (var (_, state) in AxisStates)
+                state.EndUpdate();
         }
 
         var newPosition = message.Position?.TotalSeconds ?? double.NaN;
@@ -730,7 +730,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
         foreach (var axis in axes)
         {
             var state = AxisStates[axis];
-            lock (state)
+            using (state.BeginUpdateScope())
                 state.Index = AxisState.InvalidIndex;
         }
     }
@@ -785,7 +785,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
         foreach (var axis in axes)
         {
             var state = AxisStates[axis];
-            lock (state)
+            using (state.BeginUpdateScope())
                 ResetSyncNoLock(state, isSyncing);
         }
 
@@ -871,7 +871,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
         }
 
         var state = AxisStates[axis];
-        lock (state)
+        using(state.BeginUpdateScope())
         {
             state.Index = AxisState.InvalidIndex;
             model.Script = script;
@@ -1192,7 +1192,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
             return;
 
         var state = AxisStates[axis];
-        lock (state)
+        using (state.BeginUpdateScope())
         {
             var fromValue = double.IsFinite(state.Value) ? state.Value : axis.DefaultValue;
             var toValue = MathUtils.Clamp01(offset ? fromValue + value : value);
@@ -2013,6 +2013,8 @@ internal sealed class AxisModel(DeviceAxis axis) : PropertyChangedBase
 [AddINotifyPropertyChangedInterface]
 internal sealed partial class AxisState
 {
+    private readonly Lock _updateLock = new();
+
     public static int AfterScriptIndex { get; } = int.MaxValue;
     public static int BeforeScriptIndex { get; } = -1;
     public static int InvalidIndex { get; } = int.MinValue;
@@ -2048,6 +2050,10 @@ internal sealed partial class AxisState
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InsideScript)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Value)));
     }
+
+    public void BeginUpdate() => _updateLock.Enter();
+    public void EndUpdate() => _updateLock.Exit();
+    public Lock.Scope BeginUpdateScope() => _updateLock.EnterScope();
 }
 
 internal sealed class AxisValueTransition
@@ -2140,7 +2146,7 @@ internal sealed class AxisStateUpdateContext(AxisModel model)
 
     public void BeginUpdate()
     {
-        Monitor.Enter(_state);
+        _state.BeginUpdate();
 
         Value = double.NaN;
         ScriptValue = double.NaN;
@@ -2170,7 +2176,7 @@ internal sealed class AxisStateUpdateContext(AxisModel model)
         _state.IsSpeedLimited = IsSpeedLimited;
         _state.IsSmartLimited = IsSmartLimited;
 
-        Monitor.Exit(_state);
+        _state.EndUpdate();
     }
 
     private void BroadcastEvents()
