@@ -23,3 +23,26 @@ internal record DeviceAxisValueEvent(double TargetValue, double Duration);
 
 internal sealed record class DeviceAxisScriptEvent(Keyframe From, Keyframe To)
     : DeviceAxisValueEvent(To?.Value ?? double.NaN, To?.Position - From?.Position ?? double.NaN);
+
+internal sealed record class DeviceAxisAutoHomeEvent(double TargetValue, double Duration)
+    : DeviceAxisValueEvent(TargetValue, Duration);
+
+internal sealed record class DeviceAxisSpeedLimitedScriptEvent(DeviceAxisScriptEvent Event, double SpeedLimitUnitsPerSecond)
+    : DeviceAxisValueEvent(GetTargetValue(Event, SpeedLimitUnitsPerSecond), Event.Duration)
+{
+    private static double GetTargetValue(DeviceAxisScriptEvent Event, double SpeedLimitUnitsPerSecond)
+    {
+        var from = Event?.From.Value ?? double.NaN;
+        var to = Event?.To.Value ?? double.NaN;
+
+        var step = to - from;
+        if (!double.IsFinite(step))
+            return Event.TargetValue;
+
+        var speed = step / Event.Duration;
+        if (Math.Abs(speed) < SpeedLimitUnitsPerSecond)
+            return Event.TargetValue;
+
+        return MathUtils.Clamp01(from + SpeedLimitUnitsPerSecond * Event.Duration * Math.Sign(speed));
+    }
+}

@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using Stylet;
 using System.Diagnostics;
 using System.IO;
@@ -2095,6 +2095,7 @@ internal sealed class AxisStateUpdateContext(AxisModel model)
 {
     private readonly AxisModel _model = model;
     private readonly AxisState _state = model.State;
+    private readonly AxisSettings _settings = model.Settings;
 
     public int Index { get; set; }
     public bool Invalid => Index == AxisState.InvalidIndex;
@@ -2156,13 +2157,7 @@ internal sealed class AxisStateUpdateContext(AxisModel model)
         if (double.IsFinite(Value) && double.IsFinite(LastValue))
             _state.Speed = (LastValue - Value) / deltaTime;
 
-        if (LastIndex != Index)
-        {
-            var keyframes = _model.Script?.Keyframes;
-            _state.BroadcastEvent.Set(new DeviceAxisScriptEvent(
-                keyframes?.ValidateIndex(Index) == true ? keyframes[Index] : null,
-                keyframes?.ValidateIndex(Index + 1) == true ? keyframes[Index + 1] : null));
-        }
+        BroadcastEvents();
 
         _state.Index = Index;
         _state.Value = Value;
@@ -2176,6 +2171,26 @@ internal sealed class AxisStateUpdateContext(AxisModel model)
         _state.IsSmartLimited = IsSmartLimited;
 
         Monitor.Exit(_state);
+    }
+
+    private void BroadcastEvents()
+    {
+        if (!LastIsAutoHoming && IsAutoHoming)
+        {
+            _state.BroadcastEvent.Set(new DeviceAxisAutoHomeEvent(_settings.AutoHomeTargetValue, _settings.AutoHomeDuration));
+        }
+        else if (LastIndex != Index)
+        {
+            var keyframes = _model.Script?.Keyframes;
+            var scriptEvent = new DeviceAxisScriptEvent(
+                keyframes?.ValidateIndex(Index) == true ? keyframes[Index] : null,
+                keyframes?.ValidateIndex(Index + 1) == true ? keyframes[Index + 1] : null);
+
+            if (_settings.SpeedLimitEnabled)
+                _state.BroadcastEvent.Set(new DeviceAxisSpeedLimitedScriptEvent(scriptEvent, _settings.SpeedLimitUnitsPerSecond));
+            else
+                _state.BroadcastEvent.Set(scriptEvent);
+        }
     }
 }
 
