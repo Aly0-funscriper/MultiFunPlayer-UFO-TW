@@ -30,19 +30,19 @@ internal sealed record class DeviceAxisAutoHomeEvent(double TargetValue, double 
 internal sealed record class DeviceAxisSpeedLimitedScriptEvent(DeviceAxisScriptEvent Event, double SpeedLimitUnitsPerSecond)
     : DeviceAxisValueEvent(GetTargetValue(Event, SpeedLimitUnitsPerSecond), Event.Duration)
 {
-    private static double GetTargetValue(DeviceAxisScriptEvent Event, double SpeedLimitUnitsPerSecond)
+    private static double GetTargetValue(DeviceAxisScriptEvent e, double speedLimitUnitsPerSecond)
     {
-        var from = Event?.From.Value ?? double.NaN;
-        var to = Event?.To.Value ?? double.NaN;
+        var from = e?.From.Value ?? double.NaN;
+        var to = e?.To.Value ?? double.NaN;
 
         var step = to - from;
         if (!double.IsFinite(step))
-            return Event.TargetValue;
+            return e.TargetValue;
 
-        var speed = step / Event.Duration;
-        if (Math.Abs(speed) < SpeedLimitUnitsPerSecond)
-            return Event.TargetValue;
+        var speed = step / e.Duration;
+        if (Math.Abs(speed) < speedLimitUnitsPerSecond)
+            return e.TargetValue;
 
-        return MathUtils.Clamp01(from + SpeedLimitUnitsPerSecond * Event.Duration * Math.Sign(speed));
+        return MathUtils.Clamp01(from + speedLimitUnitsPerSecond * e.Duration * Math.Sign(speed));
     }
 }

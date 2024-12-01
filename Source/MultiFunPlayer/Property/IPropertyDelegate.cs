@@ -2,8 +2,6 @@
 
 internal interface IPropertyDelegate
 {
-    IReadOnlyList<Type> Arguments { get; }
-
     object GetValue(params object[] arguments);
 }
 
@@ -15,17 +13,6 @@ internal interface IPropertyDelegate<TOut> : IPropertyDelegate
 
 internal abstract class AbstractPropertyDelegate<TOut> : IPropertyDelegate<TOut>
 {
-    private IReadOnlyList<Type> _arguments;
-
-    public IReadOnlyList<Type> Arguments
-    {
-        get
-        {
-            _arguments ??= GetType().GetGenericArguments()[..^1].AsReadOnly();
-            return _arguments;
-        }
-    }
-
     public abstract TOut GetValue(params object[] arguments);
 
     protected bool GetArgument<T>(object argument, out T value)
