@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Plugin;
 using MultiFunPlayer.Shortcut;
 using Newtonsoft.Json.Linq;
@@ -86,8 +86,6 @@ internal sealed class PluginViewModel : Screen, IDisposable
             return;
 
         Logger.Debug("Removing container [Path: \"{0}\"", fileInfo);
-
-        container.UnregisterActions(_shortcutManager);
         container.Dispose();
 
         Containers.Remove(fileInfo);
@@ -105,11 +103,7 @@ internal sealed class PluginViewModel : Screen, IDisposable
             return;
 
         Logger.Debug("Adding container [Path: \"{0}\"", fileInfo);
-
-        var container = new PluginContainer(fileInfo);
-        container.RegisterActions(_shortcutManager);
-
-        Containers.Add(fileInfo, container);
+        Containers.Add(fileInfo, new PluginContainer(_shortcutManager, fileInfo));
     }
 
     public void Handle(SettingsMessage message)

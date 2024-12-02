@@ -23,6 +23,7 @@ internal sealed class PluginContainer : PropertyChangedBase, IDisposable
 {
     private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
 
+    private readonly IShortcutManager _shortcutManager;
     private PluginCompilationResult _compilationResult;
 
     public FileInfo PluginFile { get; }
@@ -34,8 +35,9 @@ internal sealed class PluginContainer : PropertyChangedBase, IDisposable
 
     public bool CanCompile => State is not PluginState.Compiling;
 
-    public PluginContainer(FileInfo pluginFile)
+    public PluginContainer(IShortcutManager shortcutManager, FileInfo pluginFile)
     {
+        _shortcutManager = shortcutManager;
         PluginFile = pluginFile;
         QueueCompile();
     }
@@ -54,6 +56,7 @@ internal sealed class PluginContainer : PropertyChangedBase, IDisposable
             _compilationResult = result;
             if (_compilationResult.Success)
             {
+                RegisterActions();
                 State = PluginState.Running;
                 Exception = null;
             }
@@ -80,16 +83,16 @@ internal sealed class PluginContainer : PropertyChangedBase, IDisposable
             DialogHelper.Close("PluginDialog");
     }
 
-    public void RegisterActions(IShortcutManager s)
+    private void RegisterActions()
     {
-        s.RegisterAction($"Plugin::{Name}::ShowView", () => _compilationResult?.PluginInstance?.ShowView());
-        s.RegisterAction($"Plugin::{Name}::CloseView", () => _compilationResult?.PluginInstance?.CloseView());
+        _shortcutManager.RegisterAction($"Plugin::{Name}::ShowView", () => _compilationResult?.PluginInstance?.ShowView());
+        _shortcutManager.RegisterAction($"Plugin::{Name}::CloseView", () => _compilationResult?.PluginInstance?.CloseView());
     }
 
-    public void UnregisterActions(IShortcutManager s)
+    private void UnregisterActions()
     {
-        s.UnregisterAction($"Plugin::{Name}::ShowView");
-        s.UnregisterAction($"Plugin::{Name}::CloseView");
+        _shortcutManager.UnregisterAction($"Plugin::{Name}::ShowView");
+        _shortcutManager.UnregisterAction($"Plugin::{Name}::CloseView");
     }
 
     private void HandleSettings(SettingsAction action)
@@ -121,6 +124,7 @@ internal sealed class PluginContainer : PropertyChangedBase, IDisposable
         CloseView();
 
         HandleSettings(SettingsAction.Saving);
+        UnregisterActions();
 
         _compilationResult?.Dispose();
         _compilationResult = null;
