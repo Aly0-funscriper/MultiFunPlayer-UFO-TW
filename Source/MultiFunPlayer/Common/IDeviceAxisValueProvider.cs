@@ -32,8 +32,8 @@ internal sealed record class DeviceAxisSpeedLimitedScriptEvent(DeviceAxisScriptE
 {
     private static double GetTargetValue(DeviceAxisScriptEvent e, double speedLimitUnitsPerSecond)
     {
-        var from = e?.From.Value ?? double.NaN;
-        var to = e?.To.Value ?? double.NaN;
+        var from = e.From?.Value ?? double.NaN;
+        var to = e.To?.Value ?? double.NaN;
 
         var step = to - from;
         if (!double.IsFinite(step))
