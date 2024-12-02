@@ -39,7 +39,7 @@ internal abstract partial class AbstractShortcut<TGesture, TData>(IShortcutActio
     private bool _isScheduled;
 
     [JsonIgnore]
-    protected object SyncRoot { get; } = new();
+    protected Lock SyncRoot { get; } = new();
 
     public string Name { get; set; } = null;
 
