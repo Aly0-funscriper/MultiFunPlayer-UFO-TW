@@ -11,13 +11,9 @@ internal sealed class ShortcutActionConfigurationConverter(IShortcutManager mana
     {
         var o = JToken.ReadFrom(reader) as JObject;
         var actionName = o[nameof(IShortcutActionConfiguration.Name)].ToString();
-
-        var configuration = manager.CreateShortcutActionConfigurationInstance(actionName)
-            ?? throw new JsonReaderException($"Unable to find \"{actionName}\" shortcut action");
-
         var settings = o[nameof(IShortcutActionConfiguration.Settings)].ToObject<List<TypedValue>>();
-        configuration.Populate(settings);
-        return configuration;
+
+        return manager.CreateShortcutActionConfigurationInstance(actionName, settings);
     }
 
     public override void WriteJson(JsonWriter writer, IShortcutActionConfiguration value, JsonSerializer serializer)

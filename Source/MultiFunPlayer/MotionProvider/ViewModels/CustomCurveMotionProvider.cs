@@ -210,8 +210,7 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
         s.RegisterAction<DeviceAxis, PointsActionSettingsViewModel>($"MotionProvider::{name}::Points::Set",
             s => s.WithLabel("Target axis").WithItemsSource(DeviceAxis.All),
             s => s.WithDefaultValue(new PointsActionSettingsViewModel())
-                  .WithTemplateName("CustomCurveMotionProviderPointsTemplate")
-                  .WithCustomToString(x => $"Points({x.Points.Count})"),
+                  .WithTemplateName("CustomCurveMotionProviderPointsTemplate"),
             (axis, vm) => UpdateProperty(axis, p =>
             {
                 p.Duration = vm.Duration;
@@ -231,5 +230,7 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
         [JsonIgnore]
         [DependsOn(nameof(Duration))]
         public Rect Viewport => new(0, 0, Duration, 1);
+
+        public override string ToString() => $"Points({Points.Count})";
     }
 }

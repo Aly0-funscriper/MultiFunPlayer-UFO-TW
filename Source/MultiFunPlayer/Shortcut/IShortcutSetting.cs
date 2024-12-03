@@ -1,4 +1,5 @@
-﻿using PropertyChanged;
+﻿using MultiFunPlayer.Settings;
+using PropertyChanged;
 using System.Collections;
 
 namespace MultiFunPlayer.Shortcut;
@@ -12,6 +13,14 @@ internal interface IShortcutSetting
     IShortcutSettingTemplateContext TemplateContext { get; init; }
 
     Type Type { get; }
+
+    TypedValue AsTypedValue() => new(Type, Value);
+    static IShortcutSetting FromTypedValue(TypedValue value)
+    {
+        var setting = (IShortcutSetting)Activator.CreateInstance(typeof(ShortcutSetting<>).MakeGenericType(value.Type));
+        setting.Value = value.Value;
+        return setting;
+    }
 }
 
 internal interface IOneOfShortcutSetting : IShortcutSetting
