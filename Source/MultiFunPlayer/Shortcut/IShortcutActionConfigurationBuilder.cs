@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Settings;
+﻿using MultiFunPlayer.Common;
 
 namespace MultiFunPlayer.Shortcut;
 

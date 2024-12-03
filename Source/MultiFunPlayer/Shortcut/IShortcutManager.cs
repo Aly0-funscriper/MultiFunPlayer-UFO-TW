@@ -1,6 +1,5 @@
 ﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
-using MultiFunPlayer.Settings;
 using NLog;
 using Stylet;
 using System.Diagnostics;

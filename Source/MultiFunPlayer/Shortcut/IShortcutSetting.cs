@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Settings;
+﻿using MultiFunPlayer.Common;
 using PropertyChanged;
 using System.Collections;
 

@@ -1,4 +1,4 @@
-﻿namespace MultiFunPlayer.Settings;
+﻿namespace MultiFunPlayer.Common;
 
 public readonly record struct TypedValue(Type Type, object Value)
 {

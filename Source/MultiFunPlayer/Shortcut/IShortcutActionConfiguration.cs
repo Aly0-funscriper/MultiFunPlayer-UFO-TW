@@ -1,5 +1,5 @@
-﻿using MultiFunPlayer.Input;
-using MultiFunPlayer.Settings;
+﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Input;
 using Newtonsoft.Json;
 using NLog;
 using PropertyChanged;
