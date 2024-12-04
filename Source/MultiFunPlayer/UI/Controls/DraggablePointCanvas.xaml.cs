@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using PropertyChanged;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -345,8 +345,6 @@ public sealed partial class DraggablePointCanvas : UserControl
 
     private void RefreshLine()
     {
-        if (!IsVisible)
-            return;
         if (Points == null || Points.Count == 0 || ActualWidth == 0 || ActualHeight == 0)
             return;
 
