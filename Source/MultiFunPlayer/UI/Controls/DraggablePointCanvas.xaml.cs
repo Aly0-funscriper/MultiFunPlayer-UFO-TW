@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using PropertyChanged;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -350,19 +350,25 @@ public sealed partial class DraggablePointCanvas : UserControl
 
         if (IsTilingEnabled && Points.Count > 1)
         {
-            const int minimumTilePointCount = 3;
+            var minimumTilePointCount = InterpolationType switch
+            {
+                InterpolationType.Makima => 3,
+                InterpolationType.Pchip => 2,
+                _ => 1
+            };
 
-            var tileCount = Math.Ceiling((double)minimumTilePointCount / Points.Count);
-            _keyframes = new KeyframeCollection(Points.Count + minimumTilePointCount * 2);
+            var tileCount = (int)Math.Ceiling(Math.Max(0, (minimumTilePointCount - Points.Count) / (double)Points.Count)) + 1;
+            var takeCount = Math.Min(minimumTilePointCount, Points.Count);
+            _keyframes = new KeyframeCollection(Points.Count + 2 * takeCount * tileCount);
             for(var i = tileCount; i >= 1; i--)
-                foreach (var point in Points.TakeLast(minimumTilePointCount))
+                foreach (var point in Points.TakeLast(takeCount))
                     _keyframes.Add(ToCanvasX(point.X - i * Viewport.Width), ToCanvasY(point.Y));
 
             foreach (var point in Points)
                 _keyframes.Add(ToCanvasX(point.X), ToCanvasY(point.Y));
 
             for (var i = 1; i <= tileCount; i++)
-                foreach (var point in Points.Take(minimumTilePointCount))
+                foreach (var point in Points.Take(takeCount))
                     _keyframes.Add(ToCanvasX(point.X + i * Viewport.Width), ToCanvasY(point.Y));
         }
         else

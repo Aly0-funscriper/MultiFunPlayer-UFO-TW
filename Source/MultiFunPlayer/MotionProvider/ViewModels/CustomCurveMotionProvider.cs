@@ -80,19 +80,25 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
         {
             if (IsLooping && Points.Count != 1)
             {
-                const int minimumTilePointCount = 3;
+                var minimumTilePointCount = InterpolationType switch
+                {
+                    InterpolationType.Makima => 3,
+                    InterpolationType.Pchip => 2,
+                    _ => 1
+                };
 
-                var tileCount = Math.Ceiling((double)minimumTilePointCount / Points.Count);
-                var newKeyframes = new KeyframeCollection(Points.Count + minimumTilePointCount * 2);
+                var tileCount = (int)Math.Ceiling(Math.Max(0, (minimumTilePointCount - Points.Count) / (double)Points.Count)) + 1;
+                var takeCount = Math.Min(minimumTilePointCount, Points.Count);
+                var newKeyframes = new KeyframeCollection(Points.Count + 2 * takeCount * tileCount);
                 for (var i = tileCount; i >= 1; i--)
-                    foreach (var point in Points.TakeLast(minimumTilePointCount))
+                    foreach (var point in Points.TakeLast(takeCount))
                         newKeyframes.Add(point.X - i * Viewport.Width, point.Y);
 
                 foreach (var point in Points)
                     newKeyframes.Add(point.X, point.Y);
 
                 for (var i = 1; i <= tileCount; i++)
-                    foreach (var point in Points.Take(minimumTilePointCount))
+                    foreach (var point in Points.Take(takeCount))
                         newKeyframes.Add(point.X + i * Viewport.Width, point.Y);
 
                 _keyframes = newKeyframes;
