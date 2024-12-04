@@ -346,7 +346,10 @@ public sealed partial class DraggablePointCanvas : UserControl
     private void RefreshLine()
     {
         if (Points == null || Points.Count == 0 || ActualWidth == 0 || ActualHeight == 0)
+        {
+            LinePoints = [];
             return;
+        }
 
         if (IsTilingEnabled && Points.Count > 1)
         {
