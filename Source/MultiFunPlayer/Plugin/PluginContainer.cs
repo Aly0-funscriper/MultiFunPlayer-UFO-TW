@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using MultiFunPlayer.Settings;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
@@ -57,6 +57,7 @@ internal sealed class PluginContainer : PropertyChangedBase, IDisposable
             if (_compilationResult.Success)
             {
                 RegisterActions();
+                _compilationResult.PluginInstance.InternalInitialize();
                 State = PluginState.Running;
                 Exception = null;
             }

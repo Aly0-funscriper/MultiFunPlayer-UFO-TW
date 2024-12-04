@@ -1,4 +1,4 @@
-﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Emit;
@@ -231,7 +231,6 @@ internal static partial class PluginCompiler
             {
                 CreateAndBindPluginInstanceView(instance);
                 Container.BuildUp(instance);
-                instance.InternalInitialize();
                 return instance;
             }
 
