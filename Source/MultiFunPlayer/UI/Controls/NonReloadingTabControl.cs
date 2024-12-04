@@ -1,4 +1,4 @@
-using System.Collections.Specialized;
+﻿using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
@@ -89,7 +89,6 @@ public sealed class NonReloadingTabControl : TabControl
                     }
                 }
 
-                UpdateSelectedItem();
                 break;
 
             case NotifyCollectionChangedAction.Remove:
@@ -103,12 +102,13 @@ public sealed class NonReloadingTabControl : TabControl
                     }
                 }
 
-                UpdateSelectedItem();
                 break;
 
             case NotifyCollectionChangedAction.Replace:
                 throw new NotImplementedException();
         }
+
+        UpdateSelectedItem();
     }
 
     protected override void OnSelectionChanged(SelectionChangedEventArgs e)
