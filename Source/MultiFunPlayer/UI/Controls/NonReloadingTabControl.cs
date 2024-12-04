@@ -1,4 +1,4 @@
-﻿using System.Collections.Specialized;
+using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
@@ -107,7 +107,7 @@ public sealed class NonReloadingTabControl : TabControl
                 break;
 
             case NotifyCollectionChangedAction.Replace:
-                throw new NotImplementedException("Replace not implemented yet");
+                throw new NotImplementedException();
         }
     }
 
