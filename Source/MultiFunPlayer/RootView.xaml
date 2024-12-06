@@ -158,6 +158,7 @@
                         <Setter Property="Content">
                             <Setter.Value>
                                 <StackPanel Margin="10" Orientation="Vertical">
+                                    <ContentControl s:View.Model="{Binding Plugin}"/>
                                     <ContentControl s:View.Model="{Binding MediaSource}"/>
                                     <ContentControl s:View.Model="{Binding Script}"/>
                                     <ContentControl s:View.Model="{Binding OutputTarget}"/>
@@ -177,6 +178,7 @@
                                             <StackPanel Grid.Column="0"
                                                         Margin="10"
                                                         Orientation="Vertical">
+                                                <ContentControl s:View.Model="{Binding Plugin}"/>
                                                 <ContentControl s:View.Model="{Binding MediaSource}"/>
                                                 <ContentControl s:View.Model="{Binding OutputTarget}"/>
                                             </StackPanel>

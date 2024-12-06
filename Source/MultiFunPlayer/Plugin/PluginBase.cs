@@ -2,8 +2,6 @@
 using MultiFunPlayer.Input;
 using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
-using MultiFunPlayer.UI;
-using MultiFunPlayer.UI.Dialogs.ViewModels;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NLog;
@@ -228,18 +226,6 @@ public abstract class PluginBase : Screen
 
     public virtual UIElement CreateView() => null;
 
-    public void ShowView()
-    {
-        if (View != null)
-            _ = DialogHelper.ShowAsync(() => new PluginDialog(this), "RootDialog");
-    }
-
-    public void CloseView()
-    {
-        if (View != null)
-            DialogHelper.CloseByModel(this);
-    }
-
     protected virtual void OnInitialize() { }
 
     internal void InternalInitialize()
@@ -254,8 +240,6 @@ public abstract class PluginBase : Screen
     internal void InternalDispose()
     {
         EventAggregator.Unsubscribe(_messageProxy);
-
-        CloseView();
 
         CancellationSource.Cancel();
         CancellationSource.Dispose();

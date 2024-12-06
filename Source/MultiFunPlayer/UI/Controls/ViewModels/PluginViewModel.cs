@@ -1,153 +1,110 @@
 ﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Plugin;
-using MultiFunPlayer.Shortcut;
-using Newtonsoft.Json.Linq;
-using NLog;
+using PropertyChanged;
 using Stylet;
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Diagnostics;
 
 namespace MultiFunPlayer.UI.Controls.ViewModels;
 
-internal sealed class PluginViewModel : Screen, IDisposable
+internal sealed class PluginViewModel : Conductor<PluginContainer>.Collection.OneActive
 {
-    private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
+    private readonly IReadOnlyObservableCollection<PluginContainer> _source;
 
-    private readonly IShortcutManager _shortcutManager;
-    private FileSystemWatcher _watcher;
+    public bool ContentVisible { get; set; }
 
-    public ObservableConcurrentDictionary<FileInfo, PluginContainer> Containers { get; }
-
-    public PluginViewModel(IShortcutManager shortcutManager)
+    public PluginViewModel(IPluginManager pluginManager)
     {
-        _shortcutManager = shortcutManager;
+        _source = pluginManager.Containers;
+        _source.CollectionChanged += OnSourceCollectionChanged;
 
-        var pluginsDirectory = Directory.CreateDirectory("Plugins");
-
-        Containers = new ObservableConcurrentDictionary<FileInfo, PluginContainer>(new FileInfoFullNameComparer());
-        _watcher = new FileSystemWatcher()
-        {
-            Filter = "*.*",
-            Path = pluginsDirectory.FullName,
-            EnableRaisingEvents = true,
-            IncludeSubdirectories = true
-        };
-
-        _watcher.Created += OnWatcherCreated;
-        _watcher.Renamed += OnWatcherRenamed;
-        _watcher.Deleted += OnWatcherDeleted;
-
-        foreach (var fileInfo in pluginsDirectory.SafeEnumerateFiles("*.cs", IOUtils.CreateEnumerationOptions(true)))
-            AddContainer(fileInfo);
+        OnSourceCollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
     }
 
-    private void OnWatcherRenamed(object sender, RenamedEventArgs e)
+    [SuppressPropertyChangedWarnings]
+    private void OnSourceCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
     {
-        Logger.Trace("Received watcher renamed event [From: \"{0}\", To: \"{1}\"", e.OldFullPath, e.FullPath);
+        var oldItems = e.OldItems?.Cast<PluginContainer>() ?? [];
+        var newItems = e.NewItems?.Cast<PluginContainer>() ?? [];
+        var oldIndex = MapIndex(e.OldStartingIndex);
+        var newIndex = MapIndex(e.NewStartingIndex);
 
-        if (Directory.Exists(e.OldFullPath) || Directory.Exists(e.FullPath))
+        switch (e.Action)
         {
-            foreach (var (pluginFile, _) in Containers)
-                if (IsBasePathOf(e.OldFullPath, pluginFile.DirectoryName))
-                    RemoveContainer(pluginFile);
+            case NotifyCollectionChangedAction.Add:
+                AddItems(newItems, newIndex);
+                break;
+            case NotifyCollectionChangedAction.Remove:
+                RemoveItems(oldItems);
+                break;
+            case NotifyCollectionChangedAction.Replace:
+                RemoveItems(oldItems);
+                AddItems(newItems, newIndex == -1 ? MapIndex(newItems.Min(_source.IndexOf)) : newIndex);
+                break;
+            case NotifyCollectionChangedAction.Move:
+                RemoveItems(oldItems);
+                AddItems(newItems, newIndex);
+                break;
+            case NotifyCollectionChangedAction.Reset:
+                RemoveItems(Items);
+                if (Items.Count != 0)
+                    throw new UnreachableException();
 
-            var newDirectory = new DirectoryInfo(e.FullPath);
-            foreach(var pluginFile in newDirectory.SafeEnumerateFiles("*.cs", IOUtils.CreateEnumerationOptions(true)))
-                AddContainer(pluginFile);
-
-            static bool IsBasePathOf(string basePath, string subPath)
-            {
-                var relativePath = Path.GetRelativePath(subPath.Replace('\\', '/'), basePath.Replace('\\', '/'));
-                return relativePath == "." || relativePath.EndsWith("..");
-            }
-        }
-        else if (File.Exists(e.OldFullPath) || File.Exists(e.FullPath))
-        {
-            RemoveContainer(new FileInfo(e.OldFullPath));
-            AddContainer(new FileInfo(e.FullPath));
+                AddItems(_source, -1);
+                break;
         }
     }
 
-    private void OnWatcherDeleted(object sender, FileSystemEventArgs e)
+    private void AddItems(IEnumerable<PluginContainer> items, int index)
     {
-        Logger.Trace("Received watcher deleted event [Path: \"{0}\"", e.FullPath);
-        RemoveContainer(new FileInfo(e.FullPath));
-    }
+        foreach (var item in items)
+            item.PropertyChanged += OnContainerPropertyChanged;
 
-    private void OnWatcherCreated(object sender, FileSystemEventArgs e)
-    {
-        Logger.Trace("Received watcher created event [Path: \"{0}\"", e.FullPath);
-        AddContainer(new FileInfo(e.FullPath));
-    }
-
-    private void RemoveContainer(FileInfo fileInfo)
-    {
-        if (!Containers.TryGetValue(fileInfo, out var container))
-            return;
-
-        Logger.Debug("Removing container [Path: \"{0}\"", fileInfo);
-        container.Dispose();
-
-        Containers.Remove(fileInfo);
-    }
-
-    private void AddContainer(FileInfo fileInfo)
-    {
-        if (!fileInfo.AsRefreshed().Exists)
-            return;
-
-        if (fileInfo.Extension != ".cs")
-            return;
-
-        if (Containers.ContainsKey(fileInfo))
-            return;
-
-        Logger.Debug("Adding container [Path: \"{0}\"", fileInfo);
-        Containers.Add(fileInfo, new PluginContainer(_shortcutManager, fileInfo));
-    }
-
-    public void Handle(SettingsMessage message)
-    {
-        if (message.Action == SettingsAction.Saving)
+        if (index == -1)
         {
-            if (!message.Settings.EnsureContainsObjects("Plugin")
-             || !message.Settings.TryGetObject(out var settings, "Plugin"))
-                return;
-
-            settings[nameof(Containers)] = JToken.FromObject(Containers);
+            Items.AddRange(items.Where(c => c.View != null));
         }
-        else if (message.Action == SettingsAction.Loading)
+        else
         {
-            foreach (var (_, container) in Containers)
-            {
-                if (!message.Settings.TryGetObject(out var containerSettings, "Plugin", nameof(Containers), container.PluginFile.FullName))
-                    containerSettings = [];
-
-                containerSettings.Populate(container);
-            }
+            foreach (var item in items.Where(c => c.View != null))
+                Items.Insert(index++, item);
         }
     }
 
-    private void Dispose(bool disposing)
+    private void RemoveItems(IEnumerable<PluginContainer> items)
     {
-        _watcher?.Dispose();
-        _watcher = null;
+        foreach (var item in items)
+            item.PropertyChanged -= OnContainerPropertyChanged;
 
-        foreach (var (_, container) in Containers)
-            container.Dispose();
-
-        Containers.Clear();
+        Items.RemoveRange(items.Where(c => c.View != null));
     }
 
-    public void Dispose()
+    private int MapIndex(int index)
     {
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
+        if (index == -1)
+            return -1;
+
+        while (--index >= 0)
+        {
+            var ourIndex = Items.IndexOf(_source[index]);
+            if (ourIndex >= 0)
+                return ourIndex + 1;
+        }
+
+        return 0;
     }
 
-    private sealed class FileInfoFullNameComparer : IEqualityComparer<FileInfo>
+    [SuppressPropertyChangedWarnings]
+    private void OnContainerPropertyChanged(object sender, PropertyChangedEventArgs e)
     {
-        public bool Equals(FileInfo x, FileInfo y) => EqualityComparer<string>.Default.Equals(x?.FullName, y?.FullName);
-        public int GetHashCode([DisallowNull] FileInfo obj) => HashCode.Combine(obj.FullName);
+        if (e.PropertyName == nameof(PluginContainer.View))
+        {
+            var container = (PluginContainer)sender;
+            if (container.View == null)
+                Items.Remove(container);
+            else
+                Items.Insert(MapIndex(_source.IndexOf(container)), container);
+        }
     }
 }

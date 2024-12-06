@@ -1,4 +1,4 @@
-using MaterialDesignThemes.Wpf;
+﻿using MaterialDesignThemes.Wpf;
 using Microsoft.Win32;
 using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
@@ -84,6 +84,7 @@ internal sealed class Bootstrapper : Bootstrapper<RootViewModel>
         builder.Bind<IPropertyManager>().To<PropertyManager>().InSingletonScope();
         builder.Bind<IMotionProviderFactory>().To<MotionProviderFactory>().InSingletonScope();
         builder.Bind<IMotionProviderManager>().To<MotionProviderManager>().InSingletonScope();
+        builder.Bind<IPluginManager>().To<PluginManager>().InSingletonScope();
 
         foreach (var type in ReflectionUtils.FindImplementations<IScriptRepository>())
         {

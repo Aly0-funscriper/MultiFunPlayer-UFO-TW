@@ -1,4 +1,4 @@
-using MaterialDesignThemes.Wpf;
+﻿using MaterialDesignThemes.Wpf;
 using MultiFunPlayer.Common;
 using MultiFunPlayer.UI;
 using MultiFunPlayer.UI.Controls.ViewModels;
@@ -24,6 +24,7 @@ internal sealed class RootViewModel : Conductor<IScreen>.Collection.AllActive, I
     [Inject] public MediaSourceViewModel MediaSource { get; set; }
     [Inject] public OutputTargetViewModel OutputTarget { get; set; }
     [Inject] public SettingsViewModel Settings { get; set; }
+    [Inject] public PluginStatusViewModel PluginStatus { get; set; }
     [Inject] public PluginViewModel Plugin { get; set; }
     [Inject] public InformationViewModel Information { get; set; }
     [Inject] public ISnackbarMessageQueue SnackbarMessageQueue { get; set; }
@@ -47,10 +48,10 @@ internal sealed class RootViewModel : Conductor<IScreen>.Collection.AllActive, I
 
     protected override void OnActivate()
     {
-        Items.Add(Script);
-        Items.Add(MediaSource);
-        Items.Add(OutputTarget);
         Items.Add(Plugin);
+        Items.Add(MediaSource);
+        Items.Add(Script);
+        Items.Add(OutputTarget);
 
         ActivateAndSetParent(Items);
         base.OnActivate();
@@ -58,7 +59,7 @@ internal sealed class RootViewModel : Conductor<IScreen>.Collection.AllActive, I
 
     public void OnInformationClick() => _ = DialogHelper.ShowAsync(Information, "RootDialog");
     public void OnSettingsClick() => _ = DialogHelper.ShowAsync(Settings, "RootDialog");
-    public void OnPluginClick() => _ = DialogHelper.ShowAsync(Plugin, "RootDialog");
+    public void OnPluginClick() => _ = DialogHelper.ShowAsync(PluginStatus, "RootDialog");
 
     protected override void OnViewLoaded()
     {
