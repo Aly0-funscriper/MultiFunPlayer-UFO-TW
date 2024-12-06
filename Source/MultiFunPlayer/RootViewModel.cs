@@ -1,4 +1,4 @@
-﻿using MaterialDesignThemes.Wpf;
+using MaterialDesignThemes.Wpf;
 using MultiFunPlayer.Common;
 using MultiFunPlayer.UI;
 using MultiFunPlayer.UI.Controls.ViewModels;
@@ -50,7 +50,6 @@ internal sealed class RootViewModel : Conductor<IScreen>.Collection.AllActive, I
         Items.Add(Script);
         Items.Add(MediaSource);
         Items.Add(OutputTarget);
-        Items.Add(Settings);
         Items.Add(Plugin);
 
         ActivateAndSetParent(Items);
