@@ -15,10 +15,24 @@
         <converters:MultiObjectEqualToBooleanConverter x:Key="MultiObjectEqualToBooleanConverter"/>
         <converters:ItemIndexInContainerConverter x:Key="ItemIndexInContainerConverter"/>
     </UserControl.Resources>
-    <Expander Style="{StaticResource MaterialDesignToolBarExpander}"
-              material:ExpanderAssist.HorizontalHeaderPadding="0 0 6 0"
-              Background="{DynamicResource MaterialDesignToolBarBackground}"
-              IsExpanded="{Binding DataContext.ContentVisible, RelativeSource={RelativeSource FindAncestor, AncestorLevel=2, AncestorType={x:Type UserControl}}}">
+    <Expander material:ExpanderAssist.HorizontalHeaderPadding="0 0 6 0" Background="{DynamicResource MaterialDesignToolBarBackground}">
+        <Expander.Resources>
+            <Style BasedOn="{StaticResource MaterialDesignToolBarExpander}" TargetType="{x:Type Expander}">
+                <Setter Property="behaviours:ExpanderAssist.ExpanderButtonIsEnabled" Value="False"/>
+                <Setter Property="IsExpanded" Value="{Binding DataContext.ContentVisible, RelativeSource={RelativeSource FindAncestor, AncestorLevel=2, AncestorType={x:Type UserControl}}}"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Status}" Value="Connected">
+                        <DataTrigger.Setters>
+                            <Setter Property="behaviours:ExpanderAssist.ExpanderButtonIsEnabled" Value="True"/>
+                        </DataTrigger.Setters>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Path=(behaviours:ExpanderAssist.ExpanderButtonIsEnabled), RelativeSource={RelativeSource Self}}" Value="False">
+                        <Setter Property="IsExpanded" Value="False"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Expander.Resources>
+
         <Expander.Header>
             <DockPanel Height="36" LastChildFill="True">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
