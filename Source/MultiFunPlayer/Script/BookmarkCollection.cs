@@ -9,6 +9,7 @@ public sealed class BookmarkCollection : IReadOnlyList<Bookmark>
     public BookmarkCollection() => _items = [];
     public BookmarkCollection(int capacity) => _items = new List<Bookmark>(capacity);
 
+    public void Add(Bookmark bookmark) => Add(bookmark.Name, bookmark.Position);
     public void Add(string name, TimeSpan position) => Add(name, position.TotalSeconds);
     public void Add(string name, double position)
     {
@@ -37,6 +38,19 @@ public sealed class BookmarkCollection : IReadOnlyList<Bookmark>
 
         bestIndex = ~bestIndex;
         return bestIndex == Count ? Count : bestIndex;
+    }
+
+    public override bool Equals(object obj)
+        => obj is BookmarkCollection collection
+            && collection.Count == _items.Count
+            && this.SequenceEqual(collection);
+
+    public override int GetHashCode()
+    {
+        var result = new HashCode();
+        foreach (var item in _items)
+            result.Add(item.GetHashCode());
+        return result.ToHashCode();
     }
 
     #region IReadOnlyList

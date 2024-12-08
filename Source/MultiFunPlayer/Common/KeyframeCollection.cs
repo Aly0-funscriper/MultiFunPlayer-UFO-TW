@@ -9,6 +9,7 @@ public sealed class KeyframeCollection : IReadOnlyList<Keyframe>
     public KeyframeCollection() => _items = [];
     public KeyframeCollection(int capacity) => _items = new List<Keyframe>(capacity);
 
+    public void Add(Keyframe keyframe) => Add(keyframe.Position, keyframe.Value);
     public void Add(TimeSpan position, double value) => Add(position.TotalSeconds, value);
     public void Add(double position, double value)
     {
@@ -127,6 +128,19 @@ public sealed class KeyframeCollection : IReadOnlyList<Keyframe>
         var ady = Math.Abs(next.Value - prev.Value);
 
         return ady < 0.001 || adx < 0.001;
+    }
+
+    public override bool Equals(object obj)
+        => obj is KeyframeCollection collection
+            && collection.Count == _items.Count
+            && this.SequenceEqual(collection);
+
+    public override int GetHashCode()
+    {
+        var result = new HashCode();
+        foreach(var item in _items)
+            result.Add(item.GetHashCode());
+        return result.ToHashCode();
     }
 
     #region IReadOnlyList

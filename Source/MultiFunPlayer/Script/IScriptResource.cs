@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 
 namespace MultiFunPlayer.Script;
 
@@ -11,22 +11,25 @@ public interface IScriptResource
     BookmarkCollection Bookmarks { get; }
 }
 
-public sealed class ScriptResource : IScriptResource
+public record ScriptResource(string Name, string Source, KeyframeCollection Keyframes, ChapterCollection Chapters, BookmarkCollection Bookmarks) : IScriptResource
 {
-    public string Name { get; init; }
-    public string Source { get; init; }
-    public KeyframeCollection Keyframes { get; init; }
-    public ChapterCollection Chapters { get; init; }
-    public BookmarkCollection Bookmarks { get; init; }
+    public ScriptResource() : this(null, null, null, null, null) { }
 
     public static LinkedScriptResource LinkTo(IScriptResource other) => other != null ? new LinkedScriptResource(other) : null;
+
+    public virtual bool Equals(ScriptResource other)
+        => other != null
+            && string.Equals(Name, other.Name, StringComparison.Ordinal)
+            && string.Equals(Source, other.Source, StringComparison.Ordinal)
+            && (Keyframes == other.Keyframes || Keyframes?.Equals(other.Keyframes) == true)
+            && (Chapters == other.Chapters || Chapters?.Equals(other.Chapters) == true)
+            && (Bookmarks == other.Bookmarks || Bookmarks?.Equals(other.Bookmarks) == true);
+
+    public override int GetHashCode() => HashCode.Combine(Name, Source, Keyframes, Chapters, Bookmarks);
 }
 
-public sealed class LinkedScriptResource(IScriptResource linked) : IScriptResource
+public sealed record LinkedScriptResource : ScriptResource
 {
-    public string Name => linked.Name;
-    public string Source => linked.Source;
-    public KeyframeCollection Keyframes => linked.Keyframes;
-    public ChapterCollection Chapters => linked.Chapters;
-    public BookmarkCollection Bookmarks => linked.Bookmarks;
+    public LinkedScriptResource(IScriptResource linked)
+        : base(linked.Name, linked.Source, linked.Keyframes, linked.Chapters, linked.Bookmarks) { }
 }

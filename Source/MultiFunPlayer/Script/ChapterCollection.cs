@@ -9,6 +9,7 @@ public sealed class ChapterCollection : IReadOnlyList<Chapter>
     public ChapterCollection() => _items = [];
     public ChapterCollection(int capacity) => _items = new List<Chapter>(capacity);
 
+    public bool Add(Chapter chapter) => Add(chapter.Name, chapter.StartPosition, chapter.EndPosition);
     public bool Add(string name, TimeSpan startPosition, TimeSpan endPosition) => Add(name, startPosition.TotalSeconds, endPosition.TotalSeconds);
     public bool Add(string name, double startPosition, double endPosition)
     {
@@ -69,6 +70,19 @@ public sealed class ChapterCollection : IReadOnlyList<Chapter>
 
         bestIndex = ~bestIndex;
         return bestIndex == Count ? Count : bestIndex;
+    }
+
+    public override bool Equals(object obj)
+    => obj is ChapterCollection collection
+        && collection.Count == _items.Count
+        && this.SequenceEqual(collection);
+
+    public override int GetHashCode()
+    {
+        var result = new HashCode();
+        foreach (var item in _items)
+            result.Add(item.GetHashCode());
+        return result.ToHashCode();
     }
 
     #region IReadOnlyList
