@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using Stylet;
 using System.Diagnostics;
 using System.IO;
@@ -710,10 +710,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
             return;
 
         Logger.Info("Received {name:l} [Axes: {list}]", nameof(ChangeScriptMessage), message.Scripts.Keys);
-        ResetSync(true, message.Scripts.Keys);
-
-        foreach (var (axis, script) in message.Scripts)
-            SetScript(axis, script);
+        SetScripts(message.Scripts);
     }
     #endregion
 
@@ -851,12 +848,13 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
 
         Logger.Debug("Resetting axes [Axes: {list}]", axes);
         foreach (var axis in axes)
-        {
-            if (AxisModels[axis].Script != null)
-                ResetSync(true, axis);
-
             SetScript(axis, null);
-        }
+    }
+
+    private void SetScripts(IEnumerable<KeyValuePair<DeviceAxis, IScriptResource>> resources)
+    {
+        foreach(var (axis, resource) in resources)
+            SetScript(axis, resource);
     }
 
     private void SetScript(DeviceAxis axis, IScriptResource script)
@@ -870,9 +868,13 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
             return;
         }
 
+        if (model.Script == null && script == null)
+            return;
+
         var state = AxisStates[axis];
         using(state.BeginUpdateScope())
         {
+            ResetSyncNoLock(state, true);
             state.Index = AxisState.InvalidIndex;
             model.Script = script;
         }
@@ -893,16 +895,9 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
             return;
 
         if (result.IsMultiAxis)
-        {
-            ResetSync(true, result.Resources.Keys);
-            foreach (var (resourceAxis, resource) in result.Resources)
-                SetScript(resourceAxis, resource);
-        }
+            SetScripts(result.Resources);
         else
-        {
-            ResetSync(true, desiredAxis);
             SetScript(desiredAxis, result.Resource);
-        }
     }
 
     private void ReloadAxes(params DeviceAxis[] axes) => ReloadAxes(axes?.AsEnumerable());
