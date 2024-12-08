@@ -386,7 +386,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
                     if (context.IsAutoHoming || !double.IsFinite(context.Value))
                         return;
 
-                    var from = !double.IsFinite(context.LastValue) ? axis.DefaultValue : context.LastValue;
+                    var from = double.IsFinite(context.LastValue) ? context.LastValue : axis.DefaultValue;
                     context.Value = MathUtils.Clamp01(MathUtils.Lerp(from, context.Value, t));
                 }
 
@@ -431,7 +431,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
                             return true;
                         }
 
-                        var from = !double.IsFinite(context.LastValue) ? axis.DefaultValue : context.LastValue;
+                        var from = double.IsFinite(context.LastValue) ? context.LastValue : axis.DefaultValue;
                         context.Value = MathUtils.Clamp01(MathUtils.Lerp(from, settings.AutoHomeTargetValue, t * Math.Pow(2, 8 * (t - 1))));
 
                         return true;
