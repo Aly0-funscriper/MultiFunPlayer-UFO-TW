@@ -1189,9 +1189,17 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
         var state = AxisStates[axis];
         using (state.BeginUpdateScope())
         {
-            var fromValue = double.IsFinite(state.Value) ? state.Value : axis.DefaultValue;
-            var toValue = MathUtils.Clamp01(offset ? fromValue + value : value);
-            state.ExternalTransition.Reset(fromValue, toValue, duration);
+            var transition = state.ExternalTransition;
+            if (offset && transition.IsInitialized && !transition.IsFinished)
+            {
+                transition.Append(value, duration);
+            }
+            else
+            {
+                var fromValue = double.IsFinite(state.Value) ? state.Value : axis.DefaultValue;
+                var toValue = MathUtils.Clamp01(offset ? fromValue + value : value);
+                transition.Set(fromValue, toValue, duration);
+            }
         }
     }
 
@@ -2054,20 +2062,24 @@ internal sealed partial class AxisState
 internal sealed class AxisValueTransition
 {
     private bool _initialized;
+    private double _currentValue;
     private double _fromValue;
     private double _toValue;
     private double _duration;
     private double _time;
 
+    public bool IsInitialized => _initialized;
+    public bool IsFinished => _initialized && _time >= 0 && _time >= _duration;
+
     public AxisValueTransition() => _initialized = false;
 
     public double Update(double deltaTime)
     {
-        if (!_initialized)
+        if (!IsInitialized)
             return double.NaN;
-        if (_time >= 0 && _time >= _duration)
+        if (IsFinished)
             return double.NaN;
-
+        
         var nextTime = _time < 0 ? deltaTime : _time + deltaTime;
         var isEnd = _time < _duration && nextTime >= _duration;
         _time = nextTime;
@@ -2078,16 +2090,28 @@ internal sealed class AxisValueTransition
             return _toValue;
         }
 
-        var t = MathUtils.Clamp01(_time / _duration);
-        return MathUtils.Lerp(_fromValue, _toValue, t);
+        _currentValue = MathUtils.Lerp(_fromValue, _toValue, MathUtils.Clamp01(_time / _duration));
+        return _currentValue;
     }
 
-    public void Reset(double fromValue, double toValue, double duration)
+    public void Set(double fromValue, double toValue, double duration)
     {
         _initialized = true;
+        _currentValue = fromValue;
         _fromValue = fromValue;
         _toValue = toValue;
         _duration = duration;
+        _time = -1;
+    }
+
+    public void Append(double offset, double duration)
+    {
+        if (!IsInitialized)
+            return;
+
+        _fromValue = _currentValue;
+        _toValue += offset;
+        _duration += duration - _time;
         _time = -1;
     }
 }
