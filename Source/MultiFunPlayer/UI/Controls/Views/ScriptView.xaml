@@ -741,10 +741,10 @@
                                             </Menu>
 
                                             <ToggleButton Style="{StaticResource MaterialDesignToolBarToggleButton}"
-                                                          Checked="{s:Action OnInvertValueCheckedChanged}"
-                                                          IsChecked="{Binding Value.Settings.InvertValue, Mode=OneWay}"
-                                                          ToolTip="Invert"
-                                                          Unchecked="{s:Action OnInvertValueCheckedChanged}">
+                                                          Checked="{s:Action OnInvertScriptCheckedChanged}"
+                                                          IsChecked="{Binding Value.Settings.InvertScript, Mode=OneWay}"
+                                                          ToolTip="Invert script"
+                                                          Unchecked="{s:Action OnInvertScriptCheckedChanged}">
                                                 <material:PackIcon Width="20"
                                                                    Height="20"
                                                                    Kind="FlipVertical"

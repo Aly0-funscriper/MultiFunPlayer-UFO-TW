@@ -232,6 +232,10 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
                     context.InsideGap = keyframes.IsGap(context.Index);
                     var scriptValue = MathUtils.Clamp01(keyframes.Interpolate(context.Index, axisPosition, settings.InterpolationType));
                     context.ScriptValue = MathUtils.Clamp01(axis.DefaultValue + (scriptValue - axis.DefaultValue) * settings.ScriptScale);
+
+                    if (settings.InvertScript)
+                        context.ScriptValue = 1 - context.ScriptValue;
+
                     return context.IsScriptDirty;
                 }
 
@@ -369,9 +373,6 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
                         if (settings.BypassScript || context.Invalid)
                             if (settings.BypassMotionProvider || settings.SelectedMotionProvider == null)
                                 context.Value = context.TransitionValue;
-
-                    if (settings.InvertValue)
-                        context.Value = 1 - context.Value;
                 }
 
                 void UpdateSync()
@@ -1314,7 +1315,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
     }
 
     [SuppressPropertyChangedWarnings]
-    public void OnInvertValueCheckedChanged(object sender, RoutedEventArgs e)
+    public void OnInvertScriptCheckedChanged(object sender, RoutedEventArgs e)
     {
         if (sender is not ToggleButton button || button.DataContext is not KeyValuePair<DeviceAxis, AxisModel> pair)
             return;
@@ -1323,7 +1324,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
         var settings = AxisSettings[axis];
 
         ResetSync(true, axis);
-        settings.InvertValue = button.IsChecked ?? false;
+        settings.InvertScript = button.IsChecked ?? false;
     }
     #endregion
 
@@ -1685,14 +1686,14 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
             (axis, type) => UpdateSettings(axis, s => s.InterpolationType = type));
         #endregion
 
-        #region Axis::InvertValue
-        s.RegisterAction<DeviceAxis, bool>("Axis::InvertValue::Set",
+        #region Axis::InvertScript
+        s.RegisterAction<DeviceAxis, bool>("Axis::InvertScript::Set",
             s => s.WithLabel("Target axis").WithItemsSource(DeviceAxis.All),
             s => s.WithLabel("Invert script"),
-            (axis, enabled) => UpdateSettings(axis, s => s.InvertValue = enabled));
+            (axis, enabled) => UpdateSettings(axis, s => s.InvertScript = enabled));
 
-        s.RegisterAction<DeviceAxis>("Axis::InvertValue::Toggle",
-            s => s.WithLabel("Target axis").WithItemsSource(DeviceAxis.All), axis => UpdateSettings(axis, s => s.InvertValue = !s.InvertValue));
+        s.RegisterAction<DeviceAxis>("Axis::InvertScript::Toggle",
+            s => s.WithLabel("Target axis").WithItemsSource(DeviceAxis.All), axis => UpdateSettings(axis, s => s.InvertScript = !s.InvertScript));
         #endregion
 
         #region Axis::LinkPriority
@@ -2237,7 +2238,7 @@ internal sealed class AxisSettings : PropertyChangedBase
     [JsonProperty] public double AutoHomeDuration { get; set; } = 3;
     [JsonProperty] public double AutoHomeTargetValue { get; set; }
     [JsonProperty] public bool AutoHomeInsideScript { get; set; } = false;
-    [JsonProperty] public bool InvertValue { get; set; } = false;
+    [JsonProperty] public bool InvertScript { get; set; } = false;
     [JsonProperty] public double Offset { get; set; } = 0;
     [JsonProperty] public double ScriptScale { get; set; } = 1;
     [JsonProperty] public bool LockScript { get; set; } = false;
