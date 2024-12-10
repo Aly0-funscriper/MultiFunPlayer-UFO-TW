@@ -59,7 +59,10 @@ internal sealed class PluginViewModel : Conductor<PluginContainer>.Collection.On
     private void AddItems(IEnumerable<PluginContainer> items, int index)
     {
         foreach (var item in items)
+        {
+            item.PropertyChanged -= OnContainerPropertyChanged;
             item.PropertyChanged += OnContainerPropertyChanged;
+        }
 
         if (index == -1)
         {
