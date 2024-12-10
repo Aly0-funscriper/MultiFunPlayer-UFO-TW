@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 
 namespace MultiFunPlayer.Property;
 
@@ -30,23 +30,15 @@ internal sealed class PropertyManager : IPropertyManager
         _properties = [];
     }
 
-    public void RegisterProperty<TOut>(string propertyName, Func<TOut> getter)
+    private void RegisterProperty(string propertyName, IPropertyDelegate propertyDelegate)
     {
-        _properties.Add(propertyName, new PropertyDelegate<TOut>(getter));
+        _properties.Add(propertyName, propertyDelegate);
         _availableProperties.Add(propertyName);
     }
 
-    public void RegisterProperty<T0, TOut>(string propertyName, Func<T0, TOut> getter)
-    {
-        _properties.Add(propertyName, new PropertyDelegate<T0, TOut>(getter));
-        _availableProperties.Add(propertyName);
-    }
-
-    public void RegisterProperty<T0, T1, TOut>(string propertyName, Func<T0, T1, TOut> getter)
-    {
-        _properties.Add(propertyName, new PropertyDelegate<T0, T1, TOut>(getter));
-        _availableProperties.Add(propertyName);
-    }
+    public void RegisterProperty<TOut>(string propertyName, Func<TOut> getter) => RegisterProperty(propertyName, new PropertyDelegate<TOut>(getter));
+    public void RegisterProperty<T0, TOut>(string propertyName, Func<T0, TOut> getter) => RegisterProperty(propertyName, new PropertyDelegate<T0, TOut>(getter));
+    public void RegisterProperty<T0, T1, TOut>(string propertyName, Func<T0, T1, TOut> getter) => RegisterProperty(propertyName, new PropertyDelegate<T0, T1, TOut>(getter));
 
     public void UnregisterProperty(string propertyName)
     {
