@@ -67,8 +67,7 @@ internal sealed class ShortcutManager : IShortcutManager, IHandle<IInputGesture>
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
     private readonly ObservableConcurrentCollection<string> _availableActions;
-    private readonly Dictionary<string, IShortcutAction> _actions;
-    private readonly Dictionary<string, IShortcutActionConfigurationBuilder> _actionConfigurationBuilders;
+    private readonly ObservableConcurrentDictionary<string, (IShortcutAction Action, IShortcutActionConfigurationBuilder Builder)> _actions;
     private readonly ObservableConcurrentCollection<IShortcut> _shortcuts;
 
     public bool HandleGestures { get; set; } = true;
@@ -81,7 +80,6 @@ internal sealed class ShortcutManager : IShortcutManager, IHandle<IInputGesture>
 
         _availableActions = [];
         _actions = [];
-        _actionConfigurationBuilders = [];
         _shortcuts = [];
     }
 
@@ -116,12 +114,16 @@ internal sealed class ShortcutManager : IShortcutManager, IHandle<IInputGesture>
     public IShortcutAction GetAction(string actionName)
         => TryGetAction(actionName, out var action) ? action : null;
     public bool TryGetAction(string actionName, out IShortcutAction action)
-        => _actions.TryGetValue(actionName, out action);
+    {
+        var result = _actions.TryGetValue(actionName, out var item);
+        (action, _) = item;
+        return result;
+    }
 
     private void RegisterAction(string actionName, IShortcutAction action, params IEnumerable<IShortcutSettingBuilder> builders)
     {
-        _actions.Add(actionName, action);
-        _actionConfigurationBuilders.Add(actionName, new ShortcutActionConfigurationBuilder(actionName, builders));
+        var builder = new ShortcutActionConfigurationBuilder(actionName, builders);
+        _actions.Add(actionName, (action, builder));
         _availableActions.Add(actionName);
 
         Logger.Trace("Registered \"{0}\" action", actionName);
@@ -224,9 +226,7 @@ internal sealed class ShortcutManager : IShortcutManager, IHandle<IInputGesture>
             return;
 
         _availableActions.Remove(actionName);
-
         _actions.Remove(actionName);
-        _actionConfigurationBuilders.Remove(actionName);
 
         Logger.Debug("Unregistered \"{0}\" action", actionName);
         OnActionUnregistered(actionName);
@@ -234,7 +234,7 @@ internal sealed class ShortcutManager : IShortcutManager, IHandle<IInputGesture>
 
     private void OnShortcutAdded(IShortcut shortcut)
     {
-        foreach (var configuration in shortcut.Configurations.Where(c => c.State == ShortcutActionConfigurationState.Valid && !AvailableActions.Contains(c.Name)))
+        foreach (var configuration in shortcut.Configurations.Where(c => c.State == ShortcutActionConfigurationState.Valid && !_availableActions.Contains(c.Name)))
         {
             configuration.State = ShortcutActionConfigurationState.MissingAction;
             Logger.Debug("Invalidated configuration \"{0}\" due to missing action in \"{1}\" shortcut", configuration.Name, shortcut.Gesture);
@@ -243,7 +243,7 @@ internal sealed class ShortcutManager : IShortcutManager, IHandle<IInputGesture>
 
     private void OnActionRegistered(string actionName)
     {
-        var builder = _actionConfigurationBuilders[actionName];
+        var (_, builder) = _actions[actionName];
         foreach (var shortcut in _shortcuts)
         {
             for (var i = 0; i < shortcut.Configurations.Count; i++)
@@ -291,8 +291,8 @@ internal sealed class ShortcutManager : IShortcutManager, IHandle<IInputGesture>
 
     public IShortcutActionConfiguration CreateShortcutActionConfigurationInstance(string actionName, IEnumerable<TypedValue> values)
     {
-        if (_actionConfigurationBuilders.TryGetValue(actionName, out var builder))
-            return builder.Build(values);
+        if (_actions.TryGetValue(actionName, out var item))
+            return item.Builder.Build(values);
         else
             return new ShortcutActionConfiguration(actionName, values.Select(IShortcutSetting.FromTypedValue)) { State = ShortcutActionConfigurationState.Placeholder };
     }
@@ -310,6 +310,8 @@ internal sealed class ShortcutManager : IShortcutManager, IHandle<IInputGesture>
     {
         foreach (var shortcut in _shortcuts)
             shortcut.Dispose();
+
+        _shortcuts.Clear();
     }
 
     public void Dispose()
