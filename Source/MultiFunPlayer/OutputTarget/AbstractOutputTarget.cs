@@ -26,7 +26,7 @@ internal abstract class AbstractOutputTarget : Screen, IOutputTarget
     public bool ContentVisible { get; set; } = false;
     public bool AutoConnectEnabled { get; set; } = false;
 
-    public ObservableConcurrentDictionary<DeviceAxis, DeviceAxisSettings> AxisSettings { get; protected set; }
+    public Dictionary<DeviceAxis, DeviceAxisSettings> AxisSettings { get; protected set; }
     public Dictionary<DeviceAxisUpdateType, IUpdateContext> UpdateContexts { get; }
     public IReadOnlyCollection<DeviceAxisUpdateType> AvailableUpdateTypes => UpdateContexts.Keys;
 
@@ -44,7 +44,7 @@ internal abstract class AbstractOutputTarget : Screen, IOutputTarget
         Name = GetType().GetCustomAttribute<DisplayNameAttribute>(inherit: false).DisplayName;
         Logger = LogManager.GetLogger(GetType().FullName);
 
-        AxisSettings = new ObservableConcurrentDictionary<DeviceAxis, DeviceAxisSettings>(DeviceAxis.All.ToDictionary(a => a, _ => new DeviceAxisSettings()));
+        AxisSettings = new Dictionary<DeviceAxis, DeviceAxisSettings>(DeviceAxis.All.ToDictionary(a => a, _ => new DeviceAxisSettings()));
         UpdateContexts = [];
 
         RegisterUpdateContexts();
