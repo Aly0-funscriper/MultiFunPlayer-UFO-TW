@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using MultiFunPlayer.Plugin;
 using PropertyChanged;
 using Stylet;
@@ -25,62 +25,70 @@ internal sealed class PluginViewModel : Conductor<PluginContainer>.Collection.On
     [SuppressPropertyChangedWarnings]
     private void OnSourceCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
     {
-        var oldItems = e.OldItems?.Cast<PluginContainer>() ?? [];
-        var newItems = e.NewItems?.Cast<PluginContainer>() ?? [];
-        var oldIndex = MapIndex(e.OldStartingIndex);
+        if (e.OldItems?.Count > 1 || e.NewItems?.Count > 1)
+            throw new NotSupportedException();
+
+        var oldItem = e.OldItems?.Cast<PluginContainer>().FirstOrDefault();
+        var newItem = e.NewItems?.Cast<PluginContainer>().FirstOrDefault();
         var newIndex = MapIndex(e.NewStartingIndex);
 
         switch (e.Action)
         {
             case NotifyCollectionChangedAction.Add:
-                AddItems(newItems, newIndex);
+                AddItem(newItem, newIndex);
                 break;
             case NotifyCollectionChangedAction.Remove:
-                RemoveItems(oldItems);
+                RemoveItem(oldItem);
                 break;
             case NotifyCollectionChangedAction.Replace:
-                RemoveItems(oldItems);
-                AddItems(newItems, newIndex == -1 ? MapIndex(newItems.Min(_source.IndexOf)) : newIndex);
+                RemoveItem(oldItem);
+                AddItem(newItem, newIndex == -1 ? MapIndex(_source.IndexOf(newItem)) : newIndex);
                 break;
             case NotifyCollectionChangedAction.Move:
-                RemoveItems(oldItems);
-                AddItems(newItems, newIndex);
+                RemoveItem(oldItem);
+                AddItem(newItem, newIndex);
                 break;
             case NotifyCollectionChangedAction.Reset:
-                RemoveItems(Items);
+                foreach(var item in Items)
+                    RemoveItem(item);
                 if (Items.Count != 0)
                     throw new UnreachableException();
 
-                AddItems(_source, -1);
+                foreach(var item in _source)
+                    AddItem(item, -1);
                 break;
         }
     }
 
-    private void AddItems(IEnumerable<PluginContainer> items, int index)
+    private void AddItem(PluginContainer item, int index)
     {
-        foreach (var item in items)
-        {
-            item.PropertyChanged -= OnContainerPropertyChanged;
-            item.PropertyChanged += OnContainerPropertyChanged;
-        }
+        item.PropertyChanged -= OnContainerPropertyChanged;
+        item.PropertyChanged += OnContainerPropertyChanged;
 
-        if (index == -1)
-        {
-            Items.AddRange(items.Where(c => c.View != null));
-        }
-        else
-        {
-            foreach (var item in items.Where(c => c.View != null))
-                Items.Insert(index++, item);
-        }
+        if (item.View != null)
+            AddItemUnchecked(item, index);
     }
 
-    private void RemoveItems(IEnumerable<PluginContainer> items)
+    private void AddItemUnchecked(PluginContainer item, int index)
     {
-        foreach (var item in items)
-            item.PropertyChanged -= OnContainerPropertyChanged;
+        if (index == -1)
+            Items.Add(item);
+        else
+            Items.Insert(index++, item);
+    }
 
-        Items.RemoveRange(items.Where(c => c.View != null));
+    private void RemoveItem(PluginContainer item)
+    {
+        item.PropertyChanged -= OnContainerPropertyChanged;
+        if (item.View != null)
+            RemoveItemUnchecked(item);
+    }
+
+    private void RemoveItemUnchecked(PluginContainer item)
+    {
+        var activeItemIndex = item == ActiveItem ? Items.IndexOf(ActiveItem) : -1;
+        Items.Remove(item);
+        ActiveItem = activeItemIndex >= 1 ? Items[activeItemIndex - 1] : null;
     }
 
     private int MapIndex(int index)
@@ -105,9 +113,9 @@ internal sealed class PluginViewModel : Conductor<PluginContainer>.Collection.On
         {
             var container = (PluginContainer)sender;
             if (container.View == null)
-                Items.Remove(container);
+                RemoveItemUnchecked(container);
             else
-                Items.Insert(MapIndex(_source.IndexOf(container)), container);
+                AddItemUnchecked(container, MapIndex(_source.IndexOf(container)));
         }
     }
 }
