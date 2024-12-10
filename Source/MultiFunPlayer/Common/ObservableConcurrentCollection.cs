@@ -1,4 +1,4 @@
-﻿using PropertyChanged;
+using PropertyChanged;
 using System.Collections;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -17,20 +17,22 @@ public sealed class ObservableConcurrentCollection<T> : IList<T>, IReadOnlyObser
     private readonly SynchronizationContext _context;
     private readonly List<T> _items;
 
-    public object SyncRoot { get; } = new object();
+    public Lock SyncRoot { get; } = new();
+    object ICollection.SyncRoot => throw new NotImplementedException();
 
-    public ObservableConcurrentCollection()
-    {
-        _context = AsyncOperationManager.SynchronizationContext;
-        _items = [];
-        BindingOperations.EnableCollectionSynchronization(this, SyncRoot);
-    }
-
+    public ObservableConcurrentCollection() : this([]) { }
     public ObservableConcurrentCollection(IEnumerable<T> elements)
     {
         _context = AsyncOperationManager.SynchronizationContext;
         _items = new List<T>(elements);
-        BindingOperations.EnableCollectionSynchronization(this, SyncRoot);
+
+#pragma warning disable CS9216 // A value of type 'System.Threading.Lock' converted to a different type will use likely unintended monitor-based locking in 'lock' statement.
+        BindingOperations.EnableCollectionSynchronization(this, SyncRoot, static (_, syncRoot, action, _) =>
+        {
+            lock ((Lock)syncRoot)
+                action();
+        });
+#pragma warning restore CS9216 // A value of type 'System.Threading.Lock' converted to a different type will use likely unintended monitor-based locking in 'lock' statement.
     }
 
     public event NotifyCollectionChangedEventHandler CollectionChanged;
