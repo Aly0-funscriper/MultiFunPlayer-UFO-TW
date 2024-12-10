@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 
 namespace MultiFunPlayer.Property;
 
@@ -20,7 +20,7 @@ internal interface IPropertyManager
 internal sealed class PropertyManager : IPropertyManager
 {
     private readonly ObservableConcurrentCollection<string> _availableProperties;
-    private readonly Dictionary<string, IPropertyDelegate> _properties;
+    private readonly ObservableConcurrentDictionary<string, IPropertyDelegate> _properties;
 
     public IReadOnlyObservableConcurrentCollection<string> AvailableProperties => _availableProperties;
 
