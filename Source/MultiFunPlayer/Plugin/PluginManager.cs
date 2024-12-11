@@ -1,6 +1,5 @@
 ﻿using MultiFunPlayer.Common;
 using NLog;
-using Stylet;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 
@@ -8,7 +7,7 @@ namespace MultiFunPlayer.Plugin;
 
 internal interface IPluginManager : IDisposable
 {
-    public IReadOnlyObservableCollection<PluginContainer> Containers { get; }
+    public IReadOnlyObservableConcurrentCollection<PluginContainer> Containers { get; }
 }
 
 internal sealed class PluginManager : IPluginManager
@@ -16,10 +15,10 @@ internal sealed class PluginManager : IPluginManager
     private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
 
     private readonly FileInfoFullNameComparer _comparer = new();
-    private readonly BindableCollection<PluginContainer> _containers = [];
+    private readonly ObservableConcurrentCollection<PluginContainer> _containers = [];
     private FileSystemWatcher _watcher;
 
-    public IReadOnlyObservableCollection<PluginContainer> Containers => _containers;
+    public IReadOnlyObservableConcurrentCollection<PluginContainer> Containers => _containers;
 
     public PluginManager()
     {

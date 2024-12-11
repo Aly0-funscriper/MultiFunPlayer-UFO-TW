@@ -10,7 +10,7 @@ namespace MultiFunPlayer.UI.Controls.ViewModels;
 
 internal sealed class PluginViewModel : Conductor<PluginContainer>.Collection.OneActive
 {
-    private readonly IReadOnlyObservableCollection<PluginContainer> _source;
+    private readonly IReadOnlyObservableConcurrentCollection<PluginContainer> _source;
 
     public bool ContentVisible { get; set; }
 
