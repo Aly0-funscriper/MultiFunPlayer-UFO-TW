@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using MultiFunPlayer.Shortcut;
 using Newtonsoft.Json;
 using PropertyChanged;
@@ -216,7 +216,8 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
         s.RegisterAction<DeviceAxis, PointsActionSettingsViewModel>($"MotionProvider::{name}::Points::Set",
             s => s.WithLabel("Target axis").WithItemsSource(DeviceAxis.All),
             s => s.WithDefaultValue(new PointsActionSettingsViewModel())
-                  .WithTemplateName("CustomCurveMotionProviderPointsTemplate"),
+                  .WithTemplateName("CustomCurveMotionProviderPointsTemplate")
+                  .WithCustomToString(vm => $"Points({vm.Points.Count})"),
             (axis, vm) => UpdateProperty(axis, p =>
             {
                 p.Duration = vm.Duration;
@@ -226,17 +227,34 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
         #endregion
     }
 
-    [AddINotifyPropertyChangedInterface]
-    private sealed record PointsActionSettingsViewModel(ObservableConcurrentCollection<Point> Points, double Duration, InterpolationType InterpolationType)
+    internal sealed class PointsActionSettingsViewModel : INotifyPropertyChanged
     {
-        public PointsActionSettingsViewModel()
-            : this([new(0.5, 0.5)], 1, InterpolationType.Linear)
-        { }
+        public ObservableConcurrentCollection<Point> Points { get; set; }
+        public double Duration { get; set; }
+        public InterpolationType InterpolationType { get; set; }
+
+        public PointsActionSettingsViewModel() : this([new(0.5, 0.5)], 1, InterpolationType.Linear) { }
+        public PointsActionSettingsViewModel(ObservableConcurrentCollection<Point> points, double duration, InterpolationType interpolationType)
+        {
+            Points = points;
+            Duration = duration;
+            InterpolationType = interpolationType;
+        }
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:Remove unused private members")]
+        private void OnPointsChanged(ObservableConcurrentCollection<Point> oldPoints, ObservableConcurrentCollection<Point> newPoints)
+        {
+            if (oldPoints != null) oldPoints.CollectionChanged -= OnPointsCollectionChanged;
+            if (newPoints != null) newPoints.CollectionChanged += OnPointsCollectionChanged;
+        }
+
+        private void OnPointsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Points)));
 
         [JsonIgnore]
         [DependsOn(nameof(Duration))]
         public Rect Viewport => new(0, 0, Duration, 1);
 
-        public override string ToString() => $"Points({Points.Count})";
+        public event PropertyChangedEventHandler PropertyChanged;
     }
 }
