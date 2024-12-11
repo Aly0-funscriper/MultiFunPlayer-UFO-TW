@@ -12,6 +12,7 @@ public interface IShortcutSettingBuilder<T> : IShortcutSettingBuilder
 {
     internal new IShortcutSetting<T> Build();
     IShortcutSettingBuilder<T> WithDefaultValue(T defaultValue);
+    IShortcutSettingBuilder<T> WithDefaultValue(Func<T> defaultValueFactory);
     IShortcutSettingBuilder<T> WithLabel(string label);
     IShortcutSettingBuilder<T> WithDescription(string description);
     IShortcutSettingBuilder<T> WithItemsSource<TItemsSource>(TItemsSource itemsSource, bool bindsDirectlyToItemsSource = false) where TItemsSource : IEnumerable<T>;
@@ -24,7 +25,7 @@ internal sealed class ShortcutSettingBuilder<T> : IShortcutSettingBuilder<T>
 {
     private static readonly ConcurrentDictionary<int, IShortcutSettingTemplateContext> _templateContextCache = new();
 
-    private T _defaultValue;
+    private Func<T> _defaultValueFactory;
     private string _description;
     private string _label;
     private IEnumerable<T> _itemsSource;
@@ -42,6 +43,10 @@ internal sealed class ShortcutSettingBuilder<T> : IShortcutSettingBuilder<T>
         if (_templateContext != null)
             _templateContext = _templateContextCache.GetOrAdd(_templateContext.GetHashCode(), _templateContext);
 
+        var defaultValue = _defaultValueFactory != null ? _defaultValueFactory() : default;
+        if (_templateContext != null)
+            defaultValue = (T)Convert.ChangeType(_templateContext.CoerceValue(defaultValue), typeof(T));
+
         if (_itemsSource == null)
         {
             return new ShortcutSetting<T>()
@@ -50,7 +55,7 @@ internal sealed class ShortcutSettingBuilder<T> : IShortcutSettingBuilder<T>
                 Label = _label,
                 TemplateName = _templateName,
                 TemplateContext = _templateContext,
-                Value = _defaultValue,
+                Value = defaultValue,
                 CustomToString = _toString
             };
         }
@@ -63,13 +68,14 @@ internal sealed class ShortcutSettingBuilder<T> : IShortcutSettingBuilder<T>
                 ItemsSource = _itemsSource,
                 TemplateName = _templateName,
                 TemplateContext = _templateContext,
-                Value = _defaultValue,
+                Value = defaultValue,
                 CustomToString = _toString
             };
         }
     }
 
-    public IShortcutSettingBuilder<T> WithDefaultValue(T defaultValue) { _defaultValue = defaultValue; return this; }
+    public IShortcutSettingBuilder<T> WithDefaultValue(T defaultValue) => WithDefaultValue(() => defaultValue);
+    public IShortcutSettingBuilder<T> WithDefaultValue(Func<T> defaultValueFactory) { _defaultValueFactory = defaultValueFactory; return this; }
     public IShortcutSettingBuilder<T> WithItemsSource<TItemsSource>(TItemsSource itemsSource, bool bindsDirectlyToItemsSource = false) where TItemsSource : IEnumerable<T>
     {
         _itemsSource = bindsDirectlyToItemsSource ? itemsSource : itemsSource.ToList();
@@ -91,7 +97,6 @@ internal sealed class ShortcutSettingBuilder<T> : IShortcutSettingBuilder<T>
         }
 
         _templateContext = new NumericUpDownShortcutSettingTemplateContext(minimum, maximum, interval, stringFormat, numericInput);
-        _defaultValue = (T)Convert.ChangeType(_templateContext.CoerceValue(_defaultValue), typeof(T));
         return this;
     }
 }

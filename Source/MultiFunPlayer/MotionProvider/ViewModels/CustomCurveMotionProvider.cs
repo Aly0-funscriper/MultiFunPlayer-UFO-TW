@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Shortcut;
 using Newtonsoft.Json;
 using PropertyChanged;
@@ -215,7 +215,7 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
         #region CustomCurveMotionProvider::Points
         s.RegisterAction<DeviceAxis, PointsActionSettingsViewModel>($"MotionProvider::{name}::Points::Set",
             s => s.WithLabel("Target axis").WithItemsSource(DeviceAxis.All),
-            s => s.WithDefaultValue(new PointsActionSettingsViewModel())
+            s => s.WithDefaultValue(() => new PointsActionSettingsViewModel())
                   .WithTemplateName("CustomCurveMotionProviderPointsTemplate")
                   .WithCustomToString(vm => $"Points({vm.Points.Count})"),
             (axis, vm) => UpdateProperty(axis, p =>
