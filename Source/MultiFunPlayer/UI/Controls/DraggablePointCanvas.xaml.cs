@@ -15,6 +15,7 @@ namespace MultiFunPlayer.UI.Controls;
 [AddINotifyPropertyChangedInterface]
 public sealed partial class DraggablePointCanvas : UserControl
 {
+    private bool _ignorePointsCollectionChanged;
     private Vector _captureOffset;
     private KeyframeCollection _keyframes;
 
@@ -175,6 +176,9 @@ public sealed partial class DraggablePointCanvas : UserControl
     [SuppressPropertyChangedWarnings]
     private void OnPointsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
     {
+        if (_ignorePointsCollectionChanged)
+            return;
+
         SynchronizeElementsFromPoints();
         RefreshScrubber();
     }
@@ -280,6 +284,7 @@ public sealed partial class DraggablePointCanvas : UserControl
 
     private void UpdateViewport(Rect oldValue, Rect newValue)
     {
+        _ignorePointsCollectionChanged = true;
         if (Points != null)
         {
             for (var i = 0; i < Points.Count;)
@@ -292,6 +297,7 @@ public sealed partial class DraggablePointCanvas : UserControl
         }
 
         SynchronizeElementsFromPoints();
+        _ignorePointsCollectionChanged = false;
     }
 
     private void SynchronizeElementsFromPoints()
@@ -313,13 +319,15 @@ public sealed partial class DraggablePointCanvas : UserControl
         for (var i = 0; i < orderedPoints.Count; i++)
             childrenPoints[i].Position = ToCanvas(orderedPoints[i]);
 
-        RefreshLine();
+        SynchronizePointsFromElements();
     }
 
     private void SynchronizePointsFromElements()
     {
         if (ActualWidth == 0 || ActualHeight == 0)
             return;
+
+        _ignorePointsCollectionChanged = true;
 
         if (Points != null)
         {
@@ -341,6 +349,8 @@ public sealed partial class DraggablePointCanvas : UserControl
         }
 
         RefreshLine();
+
+        _ignorePointsCollectionChanged = false;
     }
 
     private void RefreshLine()

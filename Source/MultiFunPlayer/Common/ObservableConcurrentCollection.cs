@@ -1,4 +1,4 @@
-using PropertyChanged;
+﻿using PropertyChanged;
 using System.Collections;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -14,11 +14,9 @@ public interface IReadOnlyObservableConcurrentCollection<T> : IReadOnlyList<T>, 
 [DoNotNotify]
 public sealed class ObservableConcurrentCollection<T> : IList<T>, IReadOnlyObservableConcurrentCollection<T>, IList
 {
+    private readonly Lock _syncRoot = new();
     private readonly SynchronizationContext _context;
     private readonly List<T> _items;
-
-    public Lock SyncRoot { get; } = new();
-    object ICollection.SyncRoot => throw new NotImplementedException();
 
     public ObservableConcurrentCollection() : this([]) { }
     public ObservableConcurrentCollection(IEnumerable<T> elements)
@@ -27,7 +25,7 @@ public sealed class ObservableConcurrentCollection<T> : IList<T>, IReadOnlyObser
         _items = new List<T>(elements);
 
 #pragma warning disable CS9216 // A value of type 'System.Threading.Lock' converted to a different type will use likely unintended monitor-based locking in 'lock' statement.
-        BindingOperations.EnableCollectionSynchronization(this, SyncRoot, static (_, syncRoot, action, _) =>
+        BindingOperations.EnableCollectionSynchronization(this, _syncRoot, static (_, syncRoot, action, _) =>
         {
             lock ((Lock)syncRoot)
                 action();
@@ -38,75 +36,86 @@ public sealed class ObservableConcurrentCollection<T> : IList<T>, IReadOnlyObser
     public event NotifyCollectionChangedEventHandler CollectionChanged;
     public event PropertyChangedEventHandler PropertyChanged;
 
-    private void NotifyObserversOfChange()
+    private void NotifyObserversOfChange(NotifyCollectionChangedEventArgs e)
     {
-        _context.Post(_ =>
+        _context.Send(_ =>
         {
-            CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+            CollectionChanged?.Invoke(this, e);
+
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Count)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
         }, null);
     }
 
-    public void Refresh() => NotifyObserversOfChange();
+    public void Refresh() => NotifyObserversOfChange(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
 
     public int Count
     {
-        get { lock (SyncRoot) { return _items.Count; } }
+        get { lock (_syncRoot) { return _items.Count; } }
     }
 
     public T this[int index]
     {
-        get { lock (SyncRoot) { return _items[index]; } }
-        set { lock (SyncRoot) { SetItemInternal(index, value); } }
+        get { lock (_syncRoot) { return _items[index]; } }
+        set
+        {
+            if (index < 0 || index >= _items.Count)
+                throw new IndexOutOfRangeException();
+
+            var oldItem = default(T);
+            lock (_syncRoot)
+            {
+                oldItem = _items[index];
+                _items[index] = value;
+            }
+
+            NotifyObserversOfChange(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, oldItem, value));
+        }
     }
 
     public void Add(T item)
     {
-        lock (SyncRoot)
-        {
+        lock (_syncRoot)
             _items.Add(item);
-            NotifyObserversOfChange();
-        }
+
+        NotifyObserversOfChange(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, Count - 1));
     }
 
     public void AddRange(IEnumerable<T> items)
     {
-        lock (SyncRoot)
-        {
-            _items.AddRange(items);
-            NotifyObserversOfChange();
-        }
+        lock (_syncRoot)
+            foreach (var item in items)
+                Insert(Count, item);
     }
 
     public void SetFrom(IEnumerable<T> items)
     {
-        lock (SyncRoot)
+        lock (_syncRoot)
         {
             _items.Clear();
             _items.AddRange(items);
-            NotifyObserversOfChange();
         }
+
+        Refresh();
     }
 
     public void Clear()
     {
-        lock (SyncRoot)
-        {
+        lock (_syncRoot)
             _items.Clear();
-            NotifyObserversOfChange();
-        }
+
+        Refresh();
     }
 
     public void Insert(int index, T item)
     {
-        lock (SyncRoot)
-        {
-            if (index < 0 || index > _items.Count)
-                throw new IndexOutOfRangeException();
+        if (index < 0 || index > _items.Count)
+            throw new IndexOutOfRangeException();
 
+        lock (_syncRoot)
             _items.Insert(index, item);
-            NotifyObserversOfChange();
-        }
+
+        NotifyObserversOfChange(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, index));
     }
 
     public void Move(int oldIndex, int newIndex)
@@ -114,78 +123,76 @@ public sealed class ObservableConcurrentCollection<T> : IList<T>, IReadOnlyObser
         if (oldIndex == newIndex)
             return;
 
-        lock (SyncRoot)
+        if (oldIndex < 0 || oldIndex >= _items.Count)
+            throw new IndexOutOfRangeException();
+
+        if (newIndex < 0 || newIndex > _items.Count)
+            throw new IndexOutOfRangeException();
+
+        var item = default(T);
+        lock (_syncRoot)
         {
-            if (oldIndex < 0 || oldIndex >= _items.Count)
-                throw new IndexOutOfRangeException();
-
-            if (newIndex < 0 || newIndex > _items.Count)
-                throw new IndexOutOfRangeException();
-
-            var item = _items[oldIndex];
+            item = _items[oldIndex];
             _items.RemoveAt(oldIndex);
             _items.Insert(newIndex, item);
-            NotifyObserversOfChange();
         }
+
+        NotifyObserversOfChange(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Move, item, newIndex, oldIndex));
     }
 
     public bool Remove(T item)
     {
-        lock (SyncRoot)
+        var index = -1;
+        lock (_syncRoot)
         {
-            var index = _items.IndexOf(item);
+            index = _items.IndexOf(item);
             if (index < 0)
                 return false;
 
-            RemoveItemInternal(index);
-            return true;
+            _items.RemoveAt(index);
         }
+
+        NotifyObserversOfChange(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item, index));
+        return true;
     }
 
     public void RemoveRange(IEnumerable<T> items)
     {
-        lock (SyncRoot)
-        {
+        lock (_syncRoot)
             foreach (var item in items)
-                RemoveItemInternal(_items.IndexOf(item));
+                Remove(item);
+    }
+
+    public void RemoveAt(int index)
+    {
+        if (index < 0 || index >= _items.Count)
+            throw new IndexOutOfRangeException();
+
+        var item = default(T);
+        lock (_syncRoot)
+        {
+            item = _items[index];
+            _items.RemoveAt(index);
         }
-    }
 
-    public void RemoveAt(int index) => RemoveItemInternal(index);
-
-    private void RemoveItemInternal(int index)
-    {
-        if (index < 0 || index >= _items.Count)
-            throw new IndexOutOfRangeException();
-
-        _items.RemoveAt(index);
-        NotifyObserversOfChange();
-    }
-
-    private void SetItemInternal(int index, T item)
-    {
-        if (index < 0 || index >= _items.Count)
-            throw new IndexOutOfRangeException();
-
-        _items[index] = item;
-        NotifyObserversOfChange();
+        NotifyObserversOfChange(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item, index));
     }
 
     int IList.Add(object value)
     {
-        lock (SyncRoot)
+        lock (_syncRoot)
         {
             _items.Add((T)value);
             return _items.Count - 1;
         }
     }
 
-    public void CopyTo(T[] array, int index) { lock (SyncRoot) { _items.CopyTo(array, index); } }
-    public bool Contains(T item) { lock (SyncRoot) { return _items.Contains(item); } }
-    public int IndexOf(T item) { lock (SyncRoot) { return _items.IndexOf(item); } }
+    public void CopyTo(T[] array, int index) { lock (_syncRoot) { _items.CopyTo(array, index); } }
+    public bool Contains(T item) { lock (_syncRoot) { return _items.Contains(item); } }
+    public int IndexOf(T item) { lock (_syncRoot) { return _items.IndexOf(item); } }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-    public IEnumerator<T> GetEnumerator() { lock (SyncRoot) { return _items.ToList().GetEnumerator(); } }
+    public IEnumerator<T> GetEnumerator() { lock (_syncRoot) { return _items.ToList().GetEnumerator(); } }
 
     bool IList.Contains(object value) => value is T x && Contains(x);
     int IList.IndexOf(object value) => value is T x ? IndexOf(x) : -1;
@@ -203,17 +210,16 @@ public sealed class ObservableConcurrentCollection<T> : IList<T>, IReadOnlyObser
 
     void ICollection.CopyTo(Array array, int index)
     {
-        lock (SyncRoot)
-        {
+        lock (_syncRoot)
             Array.Copy(_items.ToArray(), 0, array, index, Count);
-        }
     }
 
     bool ICollection<T>.IsReadOnly => false;
 
     public bool IsFixedSize => false;
     public bool IsReadOnly => false;
-    public bool IsSynchronized => true;
+    public bool IsSynchronized => false;
+    object ICollection.SyncRoot => null;
 
     object IList.this[int index] { get => this[index]; set => this[index] = (T)value; }
 }
