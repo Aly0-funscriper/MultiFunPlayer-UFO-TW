@@ -86,9 +86,7 @@ internal sealed class PluginViewModel : Conductor<PluginContainer>.Collection.On
 
     private void RemoveItemUnchecked(PluginContainer item)
     {
-        var activeItemIndex = item == ActiveItem ? Items.IndexOf(ActiveItem) : -1;
-        Items.Remove(item);
-        ActiveItem = activeItemIndex >= 1 ? Items[activeItemIndex - 1] : null;
+        CloseItem(item);
     }
 
     private int MapIndex(int index)

@@ -11,7 +11,6 @@ internal sealed class InputSettingsViewModel : Conductor<IInputProcessorSettings
     {
         DisplayName = "Input";
         Items.AddRange(processorSettings.OrderBy(p => p.Name));
-        ActiveItem = Items.FirstOrDefault();
 
         eventAggregator.Subscribe(this);
     }

@@ -59,8 +59,8 @@ internal sealed class OutputTargetViewModel : Conductor<IOutputTarget>.Collectio
     private void AddItem(IOutputTarget target)
     {
         Items.Add(target);
+        ActivateItem(target);
         _semaphores.Add(target, new SemaphoreSlim(1, 1));
-        ActiveItem ??= target;
 
         Logger.Debug("Added new output \"{0}\"", target.Identifier);
         RegisterActions(_shortcutManager, target);
@@ -70,9 +70,8 @@ internal sealed class OutputTargetViewModel : Conductor<IOutputTarget>.Collectio
     {
         Logger.Debug("Removing output \"{0}\"", target.Identifier);
 
-        var index = Items.IndexOf(target);
+        CloseItem(target);
 
-        Items.Remove(target);
         var semaphore = _semaphores[target];
         _semaphores.Remove(target);
 
@@ -91,8 +90,6 @@ internal sealed class OutputTargetViewModel : Conductor<IOutputTarget>.Collectio
         semaphore.Release();
         semaphore.Dispose();
         target.Dispose();
-
-        ActiveItem = Items.Count > 0 ? Items[Math.Clamp(index, 0, Items.Count - 1)] : null;
     }
 
     protected override void OnViewLoaded()
