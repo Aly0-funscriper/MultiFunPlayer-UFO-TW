@@ -229,7 +229,7 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
 
     internal sealed class PointsActionSettingsViewModel : INotifyPropertyChanged
     {
-        public ObservableConcurrentCollection<Point> Points { get; set; }
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)] public ObservableConcurrentCollection<Point> Points { get; set; }
         public double Duration { get; set; }
         public InterpolationType InterpolationType { get; set; }
 
