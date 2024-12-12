@@ -86,7 +86,7 @@ internal sealed class GeneralSettingsViewModel : Screen, IHandle<SettingsMessage
             window.Width = window.MinWidth = window.MaxWidth = 1200;
     }
 
-    public void OnSelectedLogLevelChanged()
+    public void OnLogLevelChanged()
     {
         if (LogLevel == null)
             return;
