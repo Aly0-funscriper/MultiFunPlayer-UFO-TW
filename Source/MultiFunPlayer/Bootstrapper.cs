@@ -77,6 +77,8 @@ internal sealed class Bootstrapper : Bootstrapper<RootViewModel>
         builder.Bind<TCodeInputProcessor>().ToSelf();
 
         builder.Bind<IStyletLoggerManager>().To<StyletLoggerManager>().InSingletonScope();
+        builder.Bind<INewtonsoftJsonLoggerManager>().To<NewtonsoftJsonLoggerManager>().InSingletonScope();
+
         builder.Bind<IOutputTargetFactory>().To<OutputTargetFactory>().InSingletonScope();
         builder.Bind<IShortcutManager>().And<IShortcutActionResolver>().To<ShortcutManager>().InSingletonScope();
         builder.Bind<IShortcutActionRunner>().To<ShortcutActionRunner>().InSingletonScope();
@@ -255,11 +257,13 @@ internal sealed class Bootstrapper : Bootstrapper<RootViewModel>
     {
         var logger = LogManager.GetLogger(nameof(JsonConvert));
         var converterFactory = Container.Get<Func<IEnumerable<JsonConverter>>>();
+        var loggerManager = Container.Get<INewtonsoftJsonLoggerManager>();
         JsonConvert.DefaultSettings = () =>
         {
             var settings = new JsonSerializerSettings
             {
-                Formatting = Formatting.Indented
+                Formatting = Formatting.Indented,
+                TraceWriter = loggerManager.GetLogger()
             };
 
             settings.Converters.Add(new StringEnumConverter());
@@ -356,6 +360,15 @@ internal sealed class Bootstrapper : Bootstrapper<RootViewModel>
         }
 
         LogManager.ReconfigExistingLoggers();
+
+        if (settings.TryGetValue<bool>("EnableJsonLogging", out var enableJsonLogging))
+        {
+            if (enableJsonLogging)
+                Container.Get<INewtonsoftJsonLoggerManager>().ResumeLogging();
+            else
+                Container.Get<INewtonsoftJsonLoggerManager>().SuspendLogging();
+        }
+
         return dirty;
     }
 }
