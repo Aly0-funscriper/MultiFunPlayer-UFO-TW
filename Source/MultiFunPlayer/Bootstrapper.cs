@@ -363,10 +363,8 @@ internal sealed class Bootstrapper : Bootstrapper<RootViewModel>
 
         if (settings.TryGetValue<bool>("EnableJsonLogging", out var enableJsonLogging))
         {
-            if (enableJsonLogging)
-                Container.Get<INewtonsoftJsonLoggerManager>().ResumeLogging();
-            else
-                Container.Get<INewtonsoftJsonLoggerManager>().SuspendLogging();
+            var loggerManager = Container.Get<INewtonsoftJsonLoggerManager>();
+            loggerManager.IsEnabled = enableJsonLogging;
         }
 
         return dirty;

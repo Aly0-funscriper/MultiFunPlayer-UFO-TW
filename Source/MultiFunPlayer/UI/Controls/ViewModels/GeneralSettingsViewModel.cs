@@ -53,21 +53,8 @@ internal sealed class GeneralSettingsViewModel : Screen, IHandle<SettingsMessage
         window.Topmost = AlwaysOnTop;
     }
 
-    public void OnEnableJsonLoggingChanged()
-    {
-        if (EnableJsonLogging)
-            _newtonsoftLoggerManager.ResumeLogging();
-        else
-            _newtonsoftLoggerManager.SuspendLogging();
-    }
-
-    public void OnEnableUILoggingChanged()
-    {
-        if (EnableUILogging)
-            _styletLoggerManager.ResumeLogging();
-        else
-            _styletLoggerManager.SuspendLogging();
-    }
+    public void OnEnableJsonLoggingChanged() => _newtonsoftLoggerManager.IsEnabled = EnableJsonLogging;
+    public void OnEnableUILoggingChanged() => _styletLoggerManager.IsEnabled = EnableUILogging;
 
     public void OnAllowWindowResizeChanged()
     {
