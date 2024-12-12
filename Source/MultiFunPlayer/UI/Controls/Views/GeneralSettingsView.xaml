@@ -74,7 +74,7 @@
 
                 <ComboBox DockPanel.Dock="Left"
                           ItemsSource="{Binding LogLevels}"
-                          SelectedItem="{Binding SelectedLogLevel}"
+                          SelectedItem="{Binding LogLevel}"
                           Width="100"/>
             </DockPanel>
 

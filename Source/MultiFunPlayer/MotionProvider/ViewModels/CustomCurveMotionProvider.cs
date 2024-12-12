@@ -234,6 +234,8 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
         public InterpolationType InterpolationType { get; set; }
 
         public PointsActionSettingsViewModel() : this([new(0.5, 0.5)], 1, InterpolationType.Linear) { }
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0290:Use primary constructor", Justification = "OnPointsChanged not called with primary constructor")]
         public PointsActionSettingsViewModel(ObservableConcurrentCollection<Point> points, double duration, InterpolationType interpolationType)
         {
             Points = points;
@@ -248,6 +250,7 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
             if (newPoints != null) newPoints.CollectionChanged += OnPointsCollectionChanged;
         }
 
+        [SuppressPropertyChangedWarnings]
         private void OnPointsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Points)));
 
