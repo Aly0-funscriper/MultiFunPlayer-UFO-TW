@@ -225,9 +225,17 @@ internal static partial class PluginCompiler
             if (pluginType == null)
                 return PluginCompilationResult.FromFailure(context, new PluginCompileException("Unable to find exported Plugin type"));
 
-            var instance = BuildUpPluginInstance(Activator.CreateInstance(pluginType) as PluginBase);
-            if (instance.View?.GetType().IsAssignableTo(typeof(PluginViewBase)) == false)
-                return PluginCompilationResult.FromFailure(context, new PluginCompileException("Plugin view must extend PluginViewBase"));
+            var instance = default(PluginBase);
+            try
+            {
+                instance = BuildUpPluginInstance(Activator.CreateInstance(pluginType) as PluginBase);
+                if (instance.View?.GetType().IsAssignableTo(typeof(PluginViewBase)) == false)
+                    return PluginCompilationResult.FromFailure(context, new PluginCompileException("Plugin view must extend PluginViewBase"));
+            }
+            catch (Exception e)
+            {
+                return PluginCompilationResult.FromFailure(context, e);
+            }
 
             return PluginCompilationResult.FromSuccess(context, instance);
 
