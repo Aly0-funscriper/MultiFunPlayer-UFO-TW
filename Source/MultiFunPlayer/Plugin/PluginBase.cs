@@ -1,10 +1,9 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
 using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using NLog;
 using Stylet;
 using StyletIoC;
 using System.Diagnostics.CodeAnalysis;
