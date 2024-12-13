@@ -1,4 +1,4 @@
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Emit;
@@ -225,7 +225,11 @@ internal static partial class PluginCompiler
             if (pluginType == null)
                 return PluginCompilationResult.FromFailure(context, new PluginCompileException("Unable to find exported Plugin type"));
 
-            return PluginCompilationResult.FromSuccess(context, BuildUpPluginInstance(Activator.CreateInstance(pluginType) as PluginBase));
+            var instance = BuildUpPluginInstance(Activator.CreateInstance(pluginType) as PluginBase);
+            if (instance.View?.GetType().IsAssignableTo(typeof(PluginViewBase)) == false)
+                return PluginCompilationResult.FromFailure(context, new PluginCompileException("Plugin view must extend PluginViewBase"));
+
+            return PluginCompilationResult.FromSuccess(context, instance);
 
             PluginBase BuildUpPluginInstance(PluginBase instance)
             {

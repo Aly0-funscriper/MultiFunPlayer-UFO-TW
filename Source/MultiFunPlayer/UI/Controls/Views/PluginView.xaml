@@ -27,12 +27,7 @@
                 </TabControl.ItemTemplate>
                 <TabControl.ContentTemplate>
                     <DataTemplate>
-                        <Expander Style="{StaticResource MaterialDesignToolBarExpander}"
-                                  material:ExpanderAssist.HorizontalHeaderPadding="0 0 6 0"
-                                  Background="{DynamicResource MaterialDesignToolBarBackground}"
-                                  IsExpanded="{Binding DataContext.ContentVisible, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type UserControl}}}">
-                            <ContentControl Margin="20" Content="{Binding View}"/>
-                        </Expander>
+                        <ContentPresenter Content="{Binding View}"/>
                     </DataTemplate>
                 </TabControl.ContentTemplate>
             </controls:NonReloadingTabControl>
