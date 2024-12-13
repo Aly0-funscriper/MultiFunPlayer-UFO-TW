@@ -24,13 +24,11 @@ public abstract class PluginBase : Screen
     [Inject] internal IShortcutActionRunner ShortcutActionRunner { get; set; }
     [Inject] internal IPropertyManager PropertyManager { get; set; }
 
-    protected Logger Logger { get; }
     protected CancellationToken CancellationToken => CancellationSource.Token;
 
     protected PluginBase()
     {
         _messageProxy = new(HandleMessageInternal);
-        Logger = LogManager.GetLogger(GetType().FullName);
         CancellationSource = new CancellationTokenSource();
     }
 
