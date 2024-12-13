@@ -1,9 +1,10 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
 using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using PropertyChanged;
 using Stylet;
 using StyletIoC;
 using System.Diagnostics.CodeAnalysis;
@@ -15,13 +16,13 @@ namespace MultiFunPlayer.Plugin;
 public abstract class PluginBase : Screen
 {
     private readonly MessageProxy _messageProxy;
-    protected internal readonly CancellationTokenSource CancellationSource;
+    [DoNotNotify] protected internal CancellationTokenSource CancellationSource { get; }
 
-    [Inject] internal IDeviceAxisValueProvider DeviceAxisValueProvider { get; set; }
-    [Inject] internal IEventAggregator EventAggregator { get; set; }
-    [Inject] internal IShortcutManager ShortcutManager { get; set; }
-    [Inject] internal IShortcutActionRunner ShortcutActionRunner { get; set; }
-    [Inject] internal IPropertyManager PropertyManager { get; set; }
+    [Inject][DoNotNotify] internal IDeviceAxisValueProvider DeviceAxisValueProvider { get; set; }
+    [Inject][DoNotNotify] internal IEventAggregator EventAggregator { get; set; }
+    [Inject][DoNotNotify] internal IShortcutManager ShortcutManager { get; set; }
+    [Inject][DoNotNotify] internal IShortcutActionRunner ShortcutActionRunner { get; set; }
+    [Inject][DoNotNotify] internal IPropertyManager PropertyManager { get; set; }
 
     protected CancellationToken CancellationToken => CancellationSource.Token;
 
@@ -37,7 +38,7 @@ public abstract class PluginBase : Screen
     #endregion
 
     #region Shortcut
-    protected IReadOnlyObservableConcurrentCollection<string> AvailableActions
+    [DoNotNotify] protected IReadOnlyObservableConcurrentCollection<string> AvailableActions
         => ShortcutManager.AvailableActions;
 
     protected void InvokeAction(string actionName, bool invokeDirectly = false)
@@ -118,7 +119,7 @@ public abstract class PluginBase : Screen
     #endregion
 
     #region Property
-    protected IReadOnlyObservableConcurrentCollection<string> AvailableProperties => PropertyManager.AvailableProperties;
+    [DoNotNotify] protected IReadOnlyObservableConcurrentCollection<string> AvailableProperties => PropertyManager.AvailableProperties;
     protected TOut ReadProperty<TOut>(string propertyName, params object[] arguments) => PropertyManager.GetValue<TOut>(propertyName, arguments);
     protected TOut ReadProperty<TOut>(string propertyName) => PropertyManager.GetValue<TOut>(propertyName);
     protected TOut ReadProperty<T0, TOut>(string propertyName, T0 arg0) => PropertyManager.GetValue<T0, TOut>(propertyName, arg0);
