@@ -1,5 +1,6 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using Newtonsoft.Json;
 using PropertyChanged;
@@ -100,5 +101,23 @@ internal abstract class AbstractMotionProvider : Screen, IMotionProvider
             s => s.WithLabel("Target axis").WithItemsSource(DeviceAxis.All),
             (data, axis) => UpdateProperty(axis, p => p.Maximum = MathUtils.Clamp01(data.ApplyTo(p.Maximum))));
         #endregion
+    }
+
+    protected static void RegisterProperties<T>(IPropertyManager p, Func<DeviceAxis, T> getInstance) where T : AbstractMotionProvider
+    {
+        TOut GetProperty<TOut>(DeviceAxis axis, Func<T, TOut> callback)
+        {
+            var motionProvider = getInstance(axis);
+            if (motionProvider != null)
+                callback(motionProvider);
+
+            return default;
+        }
+
+        var name = typeof(T).GetCustomAttribute<DisplayNameAttribute>(inherit: false).DisplayName;
+
+        p.RegisterProperty<DeviceAxis, double>($"MotionProvider::{name}::Speed", axis => GetProperty(axis, p => p.Speed));
+        p.RegisterProperty<DeviceAxis, double>($"MotionProvider::{name}::Minimum", axis => GetProperty(axis, p => p.Minimum));
+        p.RegisterProperty<DeviceAxis, double>($"MotionProvider::{name}::Maximum", axis => GetProperty(axis, p => p.Maximum));
     }
 }

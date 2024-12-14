@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json.Linq;
@@ -15,7 +16,8 @@ using System.Text.RegularExpressions;
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("Whirligig")]
-internal sealed class WhirligigMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class WhirligigMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     public override ConnectionStatus Status { get; protected set; }
     public bool IsConnected => Status == ConnectionStatus.Connected;
@@ -141,5 +143,11 @@ internal sealed class WhirligigMediaSource(IShortcutManager shortcutManager, IEv
                 Endpoint = endpoint;
         });
         #endregion
+    }
+
+    protected override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Name}::Endpoint", () => Endpoint);
     }
 }

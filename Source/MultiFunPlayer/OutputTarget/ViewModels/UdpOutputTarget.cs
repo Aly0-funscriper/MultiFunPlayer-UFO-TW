@@ -1,6 +1,7 @@
 ﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
 using MultiFunPlayer.Input.TCode;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json.Linq;
@@ -188,5 +189,17 @@ internal sealed class UdpOutputTarget(int instanceIndex, IEventAggregator eventA
     {
         base.UnregisterActions(s);
         s.UnregisterAction($"{Identifier}::Endpoint::Set");
+    }
+
+    public override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Identifier}::Endpoint", () => Endpoint);
+    }
+
+    public override void UnregisterProperties(IPropertyManager p)
+    {
+        base.UnregisterProperties(p);
+        p.UnregisterProperty($"{Identifier}::Endpoint");
     }
 }

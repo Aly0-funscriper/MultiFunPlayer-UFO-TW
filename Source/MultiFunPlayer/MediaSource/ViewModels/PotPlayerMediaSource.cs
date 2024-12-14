@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json.Linq;
@@ -15,7 +16,8 @@ using System.Windows.Interop;
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("PotPlayer")]
-internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     public override ConnectionStatus Status { get; protected set; }
     public bool IsConnected => Status == ConnectionStatus.Connected;

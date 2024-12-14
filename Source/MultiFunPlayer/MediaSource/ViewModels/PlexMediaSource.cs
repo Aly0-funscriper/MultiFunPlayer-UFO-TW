@@ -9,11 +9,13 @@ using System.Net.Http.Headers;
 using System.Xml;
 using Newtonsoft.Json.Linq;
 using MultiFunPlayer.Shortcut;
+using MultiFunPlayer.Property;
 
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("Plex")]
-internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     private CancellationTokenSource _refreshCancellationSource = new();
     private XmlNode _currentTimeline;
@@ -462,6 +464,12 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAg
         #region RefreshClients
         s.RegisterAction($"{Name}::RefreshClients", async () => { if (CanRefreshClients) await RefreshClients(); });
         #endregion
+    }
+
+    protected override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Name}::ServerBaseUri", () => ServerBaseUri);
     }
 
     private void AddDefaultHeaders(HttpRequestHeaders headers)

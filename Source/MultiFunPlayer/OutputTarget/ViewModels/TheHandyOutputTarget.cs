@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json;
@@ -211,5 +212,17 @@ internal sealed class TheHandyOutputTarget(int instanceIndex, IEventAggregator e
         base.UnregisterActions(s);
         s.UnregisterAction($"{Identifier}::ConnectionKey::Set");
         s.UnregisterAction($"{Identifier}::SourceAxis::Set");
+    }
+
+    public override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Identifier}::SourceAxis", () => SourceAxis);
+    }
+
+    public override void UnregisterProperties(IPropertyManager p)
+    {
+        base.UnregisterProperties(p);
+        p.UnregisterProperty($"{Identifier}::SourceAxis");
     }
 }

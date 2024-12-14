@@ -2,6 +2,7 @@
 using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
 using MultiFunPlayer.Input.TCode;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json.Linq;
@@ -322,6 +323,18 @@ internal sealed class SerialOutputTarget(int instanceIndex, IEventAggregator eve
     {
         base.UnregisterActions(s);
         s.UnregisterAction($"{Identifier}::SerialPort::Set");
+    }
+
+    public override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Identifier}::SerialPort", () => SelectedSerialPort?.PortName);
+    }
+
+    public override void UnregisterProperties(IPropertyManager p)
+    {
+        base.UnregisterProperties(p);
+        p.UnregisterProperty($"{Identifier}::SerialPort");
     }
 
     protected override void Dispose(bool disposing)

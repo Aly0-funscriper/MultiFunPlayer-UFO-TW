@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using Newtonsoft.Json;
 using PropertyChanged;
@@ -225,6 +226,26 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
                 p.Points.SetFrom(vm.Points);
             }));
         #endregion
+    }
+
+    public static void RegisterProperties(IPropertyManager p, Func<DeviceAxis, CustomCurveMotionProvider> getInstance)
+    {
+        TOut GetProperty<TOut>(DeviceAxis axis, Func<CustomCurveMotionProvider, TOut> callback)
+        {
+            var motionProvider = getInstance(axis);
+            if (motionProvider != null)
+                callback(motionProvider);
+
+            return default;
+        }
+
+        AbstractMotionProvider.RegisterProperties(p, getInstance);
+        var name = typeof(CustomCurveMotionProvider).GetCustomAttribute<DisplayNameAttribute>(inherit: false).DisplayName;
+
+        p.RegisterProperty<DeviceAxis, InterpolationType>($"MotionProvider::{name}::InterpolationType", axis => GetProperty(axis, p => p.InterpolationType));
+        p.RegisterProperty<DeviceAxis, double>($"MotionProvider::{name}::Duration", axis => GetProperty(axis, p => p.Duration));
+        p.RegisterProperty<DeviceAxis, bool>($"MotionProvider::{name}::IsLooping", axis => GetProperty(axis, p => p.IsLooping));
+        p.RegisterProperty<DeviceAxis, IReadOnlyCollection<Point>>($"MotionProvider::{name}::Points", axis => GetProperty(axis, p => p.Points.AsReadOnly()));
     }
 
     internal sealed class PointsActionSettingsViewModel : INotifyPropertyChanged

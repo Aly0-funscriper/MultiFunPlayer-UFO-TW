@@ -1,5 +1,6 @@
 ﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json.Linq;
@@ -348,6 +349,26 @@ internal abstract class AbstractOutputTarget : Screen, IOutputTarget
         s.UnregisterAction($"{Identifier}::Axis::Range::Size::Offset");
         s.UnregisterAction($"{Identifier}::Axis::Range::Size::Set");
         s.UnregisterAction($"{Identifier}::Axis::Range::Size::Drive");
+    }
+
+    public virtual void RegisterProperties(IPropertyManager p)
+    {
+        p.RegisterProperty($"{Identifier}::AutoConnectEnabled", () => AutoConnectEnabled);
+        p.RegisterProperty($"{Identifier}::Connection::Status", () => Status);
+        p.RegisterProperty<DeviceAxis, double>($"{Identifier}::Axis::Range::Maximum", axis => AxisSettings[axis].Maximum);
+        p.RegisterProperty<DeviceAxis, double>($"{Identifier}::Axis::Range::Minimum", axis => AxisSettings[axis].Minimum);
+        p.RegisterProperty<DeviceAxis, double>($"{Identifier}::Axis::Range::Middle", axis => (AxisSettings[axis].Minimum + AxisSettings[axis].Maximum) / 2);
+        p.RegisterProperty<DeviceAxis, double>($"{Identifier}::Axis::Range::Size", axis => AxisSettings[axis].Maximum - AxisSettings[axis].Minimum);
+    }
+
+    public virtual void UnregisterProperties(IPropertyManager p)
+    {
+        p.UnregisterProperty($"{Identifier}::AutoConnectEnabled");
+        p.UnregisterProperty($"{Identifier}::Connection::Status");
+        p.UnregisterProperty($"{Identifier}::Axis::Range::Maximum");
+        p.UnregisterProperty($"{Identifier}::Axis::Range::Minimum");
+        p.UnregisterProperty($"{Identifier}::Axis::Range::Middle");
+        p.UnregisterProperty($"{Identifier}::Axis::Range::Size");
     }
 
     protected virtual void Dispose(bool disposing)

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using MultiFunPlayer.UI.Dialogs.ViewModels;
@@ -17,7 +18,8 @@ using System.Windows;
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("MPV")]
-internal sealed class MpvMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class MpvMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     private static string PipeName { get; } = "multifunplayer-mpv";
 
@@ -346,5 +348,11 @@ internal sealed class MpvMediaSource(IShortcutManager shortcutManager, IEventAgg
         #region Arguments
         s.RegisterAction<string>($"{Name}::Arguments::Set", s => s.WithLabel("Arguments") , arguments => Arguments = arguments);
         #endregion
+    }
+
+    protected override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Name}::Arguments", () => Arguments);
     }
 }

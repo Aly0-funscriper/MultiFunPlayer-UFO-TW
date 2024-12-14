@@ -1,4 +1,5 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Script;
 using MultiFunPlayer.Script.Repository;
 using MultiFunPlayer.Shortcut;
@@ -16,7 +17,8 @@ using System.Windows;
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("Internal")]
-internal sealed class InternalMediaSource(ILocalScriptRepository localRepository, IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class InternalMediaSource(ILocalScriptRepository localRepository, IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     private readonly Lock _playlistLock = new();
 
@@ -445,6 +447,20 @@ internal sealed class InternalMediaSource(ILocalScriptRepository localRepository
                 WriteMessage(new PlayScriptAtIndexMessage(index));
         }));
         #endregion
+    }
+
+    protected override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Name}::IsShuffling", () => IsShuffling);
+        p.RegisterProperty($"{Name}::Looping", () => IsLooping);
+        p.RegisterProperty($"{Name}::CurrentFile", () => _currentItem?.AsRefreshed()?.AsFileInfo());
+        p.RegisterProperty($"{Name}::PlaylistIndex", () => PlaylistIndex);
+        p.RegisterProperty<IReadOnlyCollection<FileInfo>>($"{Name}::PlaylistFiles", () =>
+        {
+            lock(_playlistLock)
+                return ScriptPlaylist.Select(s => s?.AsRefreshed()?.AsFileInfo()).NotNull().ToList().AsReadOnly();
+        });
     }
 
     public void OnPlayScript(object sender, EventArgs e)

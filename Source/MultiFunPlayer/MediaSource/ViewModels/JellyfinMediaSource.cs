@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json;
@@ -11,7 +12,8 @@ using System.Net.Http;
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("Jellyfin")]
-internal sealed class JellyfinMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class JellyfinMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     private CancellationTokenSource _refreshCancellationSource = new();
     private JellyfinSession _currentSession;
@@ -362,6 +364,12 @@ internal sealed class JellyfinMediaSource(IShortcutManager shortcutManager, IEve
         #region RefreshDevices
         s.RegisterAction($"{Name}::RefreshDevices", async () => { if (CanRefreshDevices) await RefreshDevices(); });
         #endregion
+    }
+
+    protected override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Name}::ServerBaseUri", () => ServerBaseUri);
     }
 
     protected override void Dispose(bool disposing)

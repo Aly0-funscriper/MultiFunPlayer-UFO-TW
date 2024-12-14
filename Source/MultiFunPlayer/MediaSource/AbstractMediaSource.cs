@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json.Linq;
@@ -26,7 +27,7 @@ internal abstract class AbstractMediaSource : Screen, IMediaSource, IHandle<IMed
 
     protected bool IsDisposing { get; private set; }
 
-    protected AbstractMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator)
+    protected AbstractMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
     {
         _messageChannel = Channel.CreateUnbounded<IMediaSourceControlMessage>(new UnboundedChannelOptions()
         {
@@ -41,6 +42,7 @@ internal abstract class AbstractMediaSource : Screen, IMediaSource, IHandle<IMed
         Logger = LogManager.GetLogger(GetType().FullName);
 
         RegisterActions(shortcutManager);
+        RegisterProperties(propertyManager);
     }
 
     protected void PublishMessage(object message)
@@ -163,6 +165,12 @@ internal abstract class AbstractMediaSource : Screen, IMediaSource, IHandle<IMed
         s.RegisterAction<bool>($"{Name}::AutoConnectEnabled::Set", s => s.WithLabel("Enable auto connect"), enabled => AutoConnectEnabled = enabled);
         s.RegisterAction($"{Name}::AutoConnectEnabled::Toggle", () => AutoConnectEnabled = !AutoConnectEnabled);
         #endregion
+    }
+
+    protected virtual void RegisterProperties(IPropertyManager p)
+    {
+        p.RegisterProperty($"{Name}::AutoConnectEnabled", () => AutoConnectEnabled);
+        p.RegisterProperty($"{Name}::Connection::Status", () => Status);
     }
 
     protected async ValueTask WaitForMessageAsync(CancellationToken token)

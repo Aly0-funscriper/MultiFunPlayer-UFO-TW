@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Script;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
@@ -14,7 +15,8 @@ using System.Text;
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("OFS")]
-internal sealed class OfsMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class OfsMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     public override ConnectionStatus Status { get; protected set; }
     public bool IsConnected => Status == ConnectionStatus.Connected;
@@ -234,5 +236,11 @@ internal sealed class OfsMediaSource(IShortcutManager shortcutManager, IEventAgg
                 Uri = uri;
         });
         #endregion
+    }
+
+    protected override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Name}::Uri", () => Uri);
     }
 }

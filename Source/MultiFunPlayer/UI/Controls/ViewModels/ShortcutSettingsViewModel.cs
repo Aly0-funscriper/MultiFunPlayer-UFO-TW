@@ -1,5 +1,6 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI.Dialogs.ViewModels;
 using Newtonsoft.Json;
@@ -40,7 +41,7 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
     public IReadOnlyCollection<Type> ShortcutTypes { get; }
     public Type SelectedShortcutType { get; set; }
 
-    public ShortcutSettingsViewModel(IShortcutManager shortcutManager, IShortcutFactory shortcutFactory, IEventAggregator eventAggregator)
+    public ShortcutSettingsViewModel(IShortcutManager shortcutManager, IPropertyManager propertyManager, IShortcutFactory shortcutFactory, IEventAggregator eventAggregator)
     {
         DisplayName = "Shortcut";
         _shortcutManager = shortcutManager;
@@ -87,6 +88,7 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
         };
 
         RegisterActions(_shortcutManager);
+        RegisterProperties(propertyManager);
     }
 
     protected override void OnActivate() => _shortcutManager.HandleGestures = false;
@@ -284,5 +286,18 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
             s => s.WithLabel("Target shortcut name"),
             shortcutName => UpdateSettings(shortcutName, s => s.Enabled = !s.Enabled));
         #endregion
+    }
+
+    private void RegisterProperties(IPropertyManager p)
+    {
+        TOut GetSettings<TOut>(string shortcutName, Func<IShortcut, TOut> callback)
+        {
+            var shortcut = Shortcuts.FirstOrDefault(x => string.Equals(x.Name, shortcutName, StringComparison.Ordinal));
+            if (shortcut == null)
+                return default;
+            return callback(shortcut);
+        }
+
+        p.RegisterProperty<string, bool>("Shortcut::Enabled", shortcutName => GetSettings(shortcutName, s => s.Enabled));
     }
 }

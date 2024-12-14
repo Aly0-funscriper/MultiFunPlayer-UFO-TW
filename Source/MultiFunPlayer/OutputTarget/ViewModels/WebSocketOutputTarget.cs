@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json.Linq;
@@ -194,5 +195,17 @@ internal sealed class WebSocketOutputTarget(int instanceIndex, IEventAggregator 
     {
         base.UnregisterActions(s);
         s.UnregisterAction($"{Identifier}::Uri::Set");
+    }
+
+    public override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Identifier}::Uri", () => Uri);
+    }
+
+    public override void UnregisterProperties(IPropertyManager p)
+    {
+        base.UnregisterProperties(p);
+        p.UnregisterProperty($"{Identifier}::Uri");
     }
 }

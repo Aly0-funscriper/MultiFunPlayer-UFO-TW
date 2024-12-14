@@ -2000,27 +2000,85 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
     #region Properties 
     private void RegisterProperties(IPropertyManager p)
     {
+        p.RegisterProperty("Media::Resource", () => MediaResource);
+        p.RegisterProperty("Media::PlayPause", () => IsPlaying);
+        p.RegisterProperty("Media::Speed", () => PlaybackSpeed);
+        p.RegisterProperty("Media::ScriptOffset", () => GlobalOffset);
+        p.RegisterProperty("Media::Position", () => MediaPosition);
+        p.RegisterProperty("Media::Duration", () => MediaDuration);
+
+        p.RegisterProperty("Media::Loop::IsValid", () => MediaLoopSegment.IsValid);
+        p.RegisterProperty("Media::Loop::Start", () => MediaLoopSegment.StartPosition);
+        p.RegisterProperty("Media::Loop::End", () => MediaLoopSegment.EndPosition);
+
+        p.RegisterProperty("Media::AutoSkipToScriptStartEnabled", () => AutoSkipToScriptStartEnabled);
+        p.RegisterProperty("Media::AutoSkipToScriptStartOffset", () => AutoSkipToScriptStartOffset);
+
+        p.RegisterProperty<DeviceAxis, bool>("Axis::Lock", axis => AxisSettings[axis].LockScript);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::Bypass::Script", axis => AxisSettings[axis].BypassScript);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::Bypass::MotionProvider", axis => AxisSettings[axis].BypassMotionProvider);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::Bypass::Transition", axis => AxisSettings[axis].BypassTransition);
+        p.RegisterProperty<DeviceAxis, InterpolationType>("Axis::InterpolationType", axis => AxisSettings[axis].InterpolationType);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::InvertScript", axis => AxisSettings[axis].InvertScript);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::LinkPriority", axis => AxisSettings[axis].LinkAxisHasPriority);
+
+        p.RegisterProperty<DeviceAxis, DeviceAxis>("Axis::SmartLimitInputAxis", axis => AxisSettings[axis].SmartLimitInputAxis);
+        p.RegisterProperty<DeviceAxis, SmartLimitMode>("Axis::SmartLimitMode", axis => AxisSettings[axis].SmartLimitMode);
+        p.RegisterProperty<DeviceAxis, double>("Axis::SmartLimitTargetValue", axis => AxisSettings[axis].SmartLimitTargetValue);
+        p.RegisterProperty<DeviceAxis, IReadOnlyCollection<Point>>("Axis::SmartLimitPoints", axis => AxisSettings[axis].SmartLimitPoints);
+
+        p.RegisterProperty<DeviceAxis, DeviceAxis>("Axis::LinkAxis", axis => AxisSettings[axis].LinkAxis);
+
+        static double InvertSpeedUnits(double value) => value <= 0 ? double.PositiveInfinity : double.IsInfinity(value) ? 0 : 1 / value;
+        static double NormalizeSpeedUnits(double value) => Math.Round(Math.Max(0, value), 2);
+
+        p.RegisterProperty<DeviceAxis, bool>("Axis::SpeedLimitEnabled", axis => AxisSettings[axis].SpeedLimitEnabled);
+        p.RegisterProperty<DeviceAxis, double>("Axis::SpeedLimitSecondsPerUnit", axis => NormalizeSpeedUnits(InvertSpeedUnits(AxisSettings[axis].SpeedLimitUnitsPerSecond)));
+        p.RegisterProperty<DeviceAxis, double>("Axis::SpeedLimitUnitsPerSecond", axis => AxisSettings[axis].SpeedLimitUnitsPerSecond);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::AutoHomeEnabled", axis => AxisSettings[axis].AutoHomeEnabled);
+        p.RegisterProperty<DeviceAxis, double>("Axis::AutoHomeDelay", axis => AxisSettings[axis].AutoHomeDelay);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::AutoHomeInsideScript", axis => AxisSettings[axis].AutoHomeInsideScript);
+        p.RegisterProperty<DeviceAxis, double>("Axis::AutoHomeDuration", axis => AxisSettings[axis].AutoHomeDuration);
+        p.RegisterProperty<DeviceAxis, double>("Axis::AutoHomeTargetValue", axis => AxisSettings[axis].AutoHomeTargetValue);
+        p.RegisterProperty<DeviceAxis, double>("Axis::ScriptOffset", axis => AxisSettings[axis].Offset);
+        p.RegisterProperty<DeviceAxis, double>("Axis::ScriptScale", axis => AxisSettings[axis].ScriptScale);
+
+        MotionProviderManager.RegisterProperties(p);
+        p.RegisterProperty<DeviceAxis, string>("Axis::MotionProvider", axis => AxisSettings[axis].SelectedMotionProvider);
+        p.RegisterProperty<DeviceAxis, double>("Axis::MotionProviderBlend", axis => AxisSettings[axis].MotionProviderBlend);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::MotionProviderFillGaps", axis => AxisSettings[axis].MotionProviderFillGaps);
+        p.RegisterProperty<DeviceAxis, double>("Axis::MotionProviderMinimumGapDuration", axis => AxisSettings[axis].MotionProviderMinimumGapDuration);
+        p.RegisterProperty<DeviceAxis, DeviceAxis>("Axis::UpdateMotionProviderWithAxis", axis => AxisSettings[axis].UpdateMotionProviderWithAxis);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::UpdateMotionProviderWhenPaused", axis => AxisSettings[axis].UpdateMotionProviderWhenPaused);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::UpdateMotionProviderWithoutScript", axis => AxisSettings[axis].UpdateMotionProviderWithoutScript);
+
+        p.RegisterProperty("Sync::Duration", () => SyncSettings.Duration);
+        p.RegisterProperty("Sync::SyncOnMediaResourceChanged", () => SyncSettings.SyncOnMediaResourceChanged);
+        p.RegisterProperty("Sync::SyncOnScriptResourceChanged", () => SyncSettings.SyncOnScriptResourceChanged);
+        p.RegisterProperty("Sync::SyncOnMediaPlayPause", () => SyncSettings.SyncOnMediaPlayPause);
+        p.RegisterProperty("Sync::SyncOnSeek", () => SyncSettings.SyncOnSeek);
+        p.RegisterProperty("Sync::SyncOnAutoHomeStartEnd", () => SyncSettings.SyncOnAutoHomeStartEnd);
+
+        p.RegisterProperty<DeviceAxis, bool>("Axis::AfterScript", axis => AxisStates[axis].AfterScript);
+        p.RegisterProperty<DeviceAxis, double>("Axis::AutoHomeTime", axis => AxisStates[axis].AutoHomeTime);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::BeforeScript", axis => AxisStates[axis].BeforeScript);
+        p.RegisterProperty<DeviceAxis, int>("Axis::Index", axis => AxisStates[axis].Index);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::InsideGap", axis => AxisStates[axis].InsideGap);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::InsideScript", axis => AxisStates[axis].InsideScript);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::Invalid", axis => AxisStates[axis].Invalid);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::IsAutoHoming", axis => AxisStates[axis].IsAutoHoming);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::IsDirty", axis => AxisStates[axis].IsDirty);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::IsSmartLimited", axis => AxisStates[axis].IsSmartLimited);
+        p.RegisterProperty<DeviceAxis, bool>("Axis::IsSpeedLimited", axis => AxisStates[axis].IsSpeedLimited);
+        p.RegisterProperty<DeviceAxis, double>("Axis::MotionProviderValue", axis => AxisStates[axis].MotionProviderValue);
+        p.RegisterProperty<DeviceAxis, double>("Axis::ScriptValue", axis => AxisStates[axis].ScriptValue);
+        p.RegisterProperty<DeviceAxis, double>("Axis::Speed", axis => AxisStates[axis].Speed);
+        p.RegisterProperty<DeviceAxis, double>("Axis::SyncTime", axis => AxisStates[axis].SyncTime);
+        p.RegisterProperty<DeviceAxis, double>("Axis::TransitionValue", axis => AxisStates[axis].TransitionValue);
+        p.RegisterProperty<DeviceAxis, double>("Axis::Value", axis => AxisStates[axis].Value);
+
         p.RegisterProperty<DeviceAxis, IScriptResource>("Axis::Script", axis => AxisModels[axis].Script);
         p.RegisterProperty<DeviceAxis, double>("Axis::Position", GetAxisPosition);
-
-        p.RegisterProperty<DeviceAxis, int>("Axis::Index", axis => AxisStates[axis].Index);
-        p.RegisterProperty<DeviceAxis, double>("Axis::Value", axis => AxisStates[axis].Value);
-        p.RegisterProperty<DeviceAxis, double>("Axis::ScriptValue", axis => AxisStates[axis].ScriptValue);
-        p.RegisterProperty<DeviceAxis, double>("Axis::TransitionValue", axis => AxisStates[axis].TransitionValue);
-        p.RegisterProperty<DeviceAxis, double>("Axis::MotionProviderValue", axis => AxisStates[axis].MotionProviderValue);
-        p.RegisterProperty<DeviceAxis, double>("Axis::Speed", axis => AxisStates[axis].Speed);
-
-        p.RegisterProperty<DeviceAxis, InterpolationType>("Axis::InterpolationType", axis => AxisSettings[axis].InterpolationType);
-        p.RegisterProperty<DeviceAxis, double>("Axis::Offset", axis => AxisSettings[axis].Offset);
-        p.RegisterProperty<DeviceAxis, double>("Axis::ScriptScale", axis => AxisSettings[axis].ScriptScale);
-        p.RegisterProperty<DeviceAxis, bool>("Axis::BypassScript", axis => AxisSettings[axis].BypassScript);
-        p.RegisterProperty<DeviceAxis, bool>("Axis::BypassMotionProvider", axis => AxisSettings[axis].BypassMotionProvider);
-        p.RegisterProperty<DeviceAxis, bool>("Axis::BypassTransition", axis => AxisSettings[axis].BypassTransition);
-
-        p.RegisterProperty("Media::IsPlaying", () => IsPlaying);
-        p.RegisterProperty("Media::Speed", () => PlaybackSpeed);
-        p.RegisterProperty("Media::Duration", () => MediaDuration);
-        p.RegisterProperty("Media::Position", () => MediaPosition);
     }
     #endregion
 
