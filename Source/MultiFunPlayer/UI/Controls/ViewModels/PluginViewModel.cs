@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Plugin;
 using PropertyChanged;
 using Stylet;
@@ -75,6 +75,9 @@ internal sealed class PluginViewModel : Conductor<PluginContainer>.Collection.On
             Items.Add(item);
         else
             Items.Insert(index++, item);
+
+        if (ActiveItem == null)
+            ActivateItem(item);
     }
 
     private void RemoveItem(PluginContainer item)
