@@ -1961,6 +1961,37 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
         s.RegisterAction<DeviceAxis>("Axis::UpdateMotionProviderWithoutScript::Toggle",
             s => s.WithLabel("Target axis").WithItemsSource(DeviceAxis.All), axis => UpdateSettings(axis, s => s.UpdateMotionProviderWithoutScript = !s.UpdateMotionProviderWithoutScript));
         #endregion
+
+        #region Sync::Duration
+        s.RegisterAction<double>("Sync::Duration::Set",
+            s => s.WithLabel("Value").WithDefaultValue(4).AsNumericUpDown(0.5, 8, 0.5, "{0:F1}"),
+            value => SyncSettings.Duration = Math.Clamp(value, 0.5, 8));
+        #endregion
+
+        #region Sync::SyncOnMediaResourceChanged
+        s.RegisterAction<bool>("Sync::SyncOnMediaResourceChanged::Set",
+            s => s.WithLabel("Sync on media resource changed enabled"), value => SyncSettings.SyncOnMediaResourceChanged = value);
+        #endregion
+
+        #region Sync::SyncOnScriptResourceChanged
+        s.RegisterAction<bool>("Sync::SyncOnScriptResourceChanged::Set",
+            s => s.WithLabel("Sync on script resource changed enabled"), value => SyncSettings.SyncOnScriptResourceChanged = value);
+        #endregion
+
+        #region Sync::SyncOnMediaPlayPause
+        s.RegisterAction<bool>("Sync::SyncOnMediaPlayPause::Set",
+            s => s.WithLabel("Sync on media play/pause enabled"), value => SyncSettings.SyncOnMediaPlayPause = value);
+        #endregion
+
+        #region Sync::SyncOnSeek
+        s.RegisterAction<bool>("Sync::SyncOnSeek::Set",
+            s => s.WithLabel("Sync on media seek enabled"), value => SyncSettings.SyncOnSeek = value);
+        #endregion
+
+        #region Sync::SyncOnAutoHomeStartEnd
+        s.RegisterAction<bool>("Sync::SyncOnAutoHomeStartEnd::Set",
+            s => s.WithLabel("Sync on auto-home start/end enabled"), value => SyncSettings.SyncOnAutoHomeStartEnd = value);
+        #endregion
     }
     #endregion
 
