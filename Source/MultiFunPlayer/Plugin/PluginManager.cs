@@ -64,6 +64,15 @@ internal sealed class PluginManager : IPluginManager
         {
             RemoveContainer(new FileInfo(e.OldFullPath));
             AddContainer(new FileInfo(e.FullPath));
+
+            if (TryChangeExtension(e.OldFullPath, ".xaml", ".cs", out var csOldFullPath))
+                RemoveContainer(new FileInfo(csOldFullPath));
+            if (TryChangeExtension(e.FullPath, ".xaml", ".cs", out var csFullPath))
+                AddContainer(new FileInfo(csFullPath));
+
+            static bool TryChangeExtension(string path, string extensionFrom, string extensionTo, out string result)
+                => !string.IsNullOrWhiteSpace(result = string.Equals(Path.GetExtension(path), extensionFrom, StringComparison.OrdinalIgnoreCase)
+                                                        ? Path.ChangeExtension(path, extensionTo) : null);
         }
     }
 
