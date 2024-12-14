@@ -875,7 +875,8 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
         var state = AxisStates[axis];
         using(state.BeginUpdateScope())
         {
-            ResetSyncNoLock(state, true);
+            if (SyncSettings.SyncOnScriptResourceChanged)
+                ResetSyncNoLock(state, true);
             state.Index = AxisState.InvalidIndex;
             model.Script = script;
         }
@@ -2291,6 +2292,7 @@ internal sealed class SyncSettings : PropertyChangedBase
 {
     [JsonProperty] public double Duration { get; set; } = 4;
     [JsonProperty] public bool SyncOnMediaResourceChanged { get; set; } = true;
+    [JsonProperty] public bool SyncOnScriptResourceChanged { get; set; } = true;
     [JsonProperty] public bool SyncOnMediaPlayPause { get; set; } = true;
     [JsonProperty] public bool SyncOnSeek { get; set; } = true;
     [JsonProperty] public bool SyncOnAutoHomeStartEnd { get; set; } = true;
