@@ -10,26 +10,18 @@
              d:DesignHeight="450"
              d:DesignWidth="800"
              mc:Ignorable="d">
-    <UserControl.Resources>
-        <Style TargetType="{x:Type plugin:PluginViewBase}">
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type plugin:PluginViewBase}">
-                        <Expander Style="{StaticResource MaterialDesignToolBarExpander}"
-                                  material:ExpanderAssist.HorizontalHeaderPadding="0 0 6 0"
-                                  Background="{DynamicResource MaterialDesignToolBarBackground}"
-                                  IsExpanded="{Binding DataContext.ContentVisible, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ui:PluginView}}}">
-                            <Expander.Header>
-                                <StackPanel Height="36" Orientation="Horizontal">
-                                    <ContentPresenter Content="{Binding ToolBarContent, RelativeSource={RelativeSource TemplatedParent}}"/>
-                                </StackPanel>
-                            </Expander.Header>
+    <UserControl.Template>
+        <ControlTemplate TargetType="{x:Type plugin:PluginViewBase}">
+            <Expander Style="{StaticResource MaterialDesignToolBarExpander}"
+                      material:ExpanderAssist.HorizontalHeaderPadding="0 0 6 0"
+                      Background="{DynamicResource MaterialDesignToolBarBackground}"
+                      IsExpanded="{Binding DataContext.ContentVisible, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ui:PluginView}}}">
+                <Expander.Header>
+                    <ContentPresenter Height="36" Content="{Binding ToolBarContent, RelativeSource={RelativeSource TemplatedParent}}"/>
+                </Expander.Header>
 
-                            <ContentPresenter Margin="20" Content="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}"/>
-                        </Expander>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </UserControl.Resources>
+                <ContentPresenter Margin="20" Content="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}"/>
+            </Expander>
+        </ControlTemplate>
+    </UserControl.Template>
 </UserControl>
