@@ -871,6 +871,8 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
 
         if (model.Script == null && script == null)
             return;
+        if (model.Script == script)
+            return;
 
         var state = AxisStates[axis];
         using(state.BeginUpdateScope())
