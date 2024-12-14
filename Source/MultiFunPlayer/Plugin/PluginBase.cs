@@ -28,6 +28,7 @@ public abstract class PluginBase : Screen
 
     protected PluginBase()
     {
+        DisplayName = GetType().Name;
         _messageProxy = new(HandleMessageInternal);
         CancellationSource = new CancellationTokenSource();
     }

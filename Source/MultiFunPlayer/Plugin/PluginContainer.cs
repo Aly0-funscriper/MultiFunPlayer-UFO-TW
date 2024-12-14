@@ -27,8 +27,8 @@ internal sealed class PluginContainer : PropertyChangedBase, IChildDelegate, ISc
     public Exception Exception { get; private set; }
     public PluginState State { get; private set; }
 
-    public string Name => Path.GetFileNameWithoutExtension(File.Name);
     public UIElement View => _compilationResult?.PluginInstance?.View;
+    public PluginBase ViewModel => _compilationResult?.PluginInstance;
 
     public bool CanCompile => State is not PluginState.Compiling;
 

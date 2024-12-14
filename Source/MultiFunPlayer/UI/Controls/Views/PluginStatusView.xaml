@@ -119,7 +119,7 @@
                                 <TextBlock DockPanel.Dock="Left"
                                            Margin="10 0 0 0"
                                            VerticalAlignment="Center"
-                                           Text="{Binding Name}"/>
+                                           Text="{Binding File.Name}"/>
 
                                 <Button s:View.ActionTarget="{Binding}"
                                         DockPanel.Dock="Right"
