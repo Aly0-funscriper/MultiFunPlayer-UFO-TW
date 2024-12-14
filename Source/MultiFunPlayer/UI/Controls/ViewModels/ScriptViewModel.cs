@@ -2094,17 +2094,16 @@ internal sealed partial class AxisState
 
 internal sealed class AxisValueTransition
 {
-    private bool _initialized;
     private double _currentValue;
     private double _fromValue;
     private double _toValue;
     private double _duration;
     private double _time;
 
-    public bool IsInitialized => _initialized;
-    public bool IsFinished => _initialized && _time >= 0 && _time >= _duration;
+    public bool IsInitialized { get; private set; }
+    public bool IsFinished => IsInitialized && _time >= 0 && _time >= _duration;
 
-    public AxisValueTransition() => _initialized = false;
+    public AxisValueTransition() => IsInitialized = false;
 
     public double Update(double deltaTime)
     {
@@ -2112,14 +2111,14 @@ internal sealed class AxisValueTransition
             return double.NaN;
         if (IsFinished)
             return double.NaN;
-        
+
         var nextTime = _time < 0 ? deltaTime : _time + deltaTime;
         var isEnd = _time < _duration && nextTime >= _duration;
         _time = nextTime;
 
         if (isEnd)
         {
-            _initialized = false;
+            IsInitialized = false;
             return _toValue;
         }
 
@@ -2129,7 +2128,7 @@ internal sealed class AxisValueTransition
 
     public void Set(double fromValue, double toValue, double duration)
     {
-        _initialized = true;
+        IsInitialized = true;
         _currentValue = fromValue;
         _fromValue = fromValue;
         _toValue = toValue;
