@@ -83,9 +83,8 @@ public sealed class ObservableConcurrentCollection<T> : IList<T>, IReadOnlyObser
 
     public void AddRange(IEnumerable<T> items)
     {
-        lock (_syncRoot)
-            foreach (var item in items)
-                Insert(Count, item);
+        foreach (var item in items)
+            Insert(Count, item);
     }
 
     public void SetFrom(IEnumerable<T> items)
@@ -158,9 +157,8 @@ public sealed class ObservableConcurrentCollection<T> : IList<T>, IReadOnlyObser
 
     public void RemoveRange(IEnumerable<T> items)
     {
-        lock (_syncRoot)
-            foreach (var item in items)
-                Remove(item);
+        foreach (var item in items)
+            Remove(item);
     }
 
     public void RemoveAt(int index)
