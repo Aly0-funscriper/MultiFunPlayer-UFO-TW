@@ -18,7 +18,6 @@ public abstract class PluginBase : Screen
     private readonly MessageProxy _messageProxy;
     [DoNotNotify] protected internal CancellationTokenSource CancellationSource { get; }
 
-    [Inject][DoNotNotify] internal IDeviceAxisValueProvider DeviceAxisValueProvider { get; set; }
     [Inject][DoNotNotify] internal IEventAggregator EventAggregator { get; set; }
     [Inject][DoNotNotify] internal IShortcutManager ShortcutManager { get; set; }
     [Inject][DoNotNotify] internal IShortcutActionRunner ShortcutActionRunner { get; set; }
@@ -32,11 +31,6 @@ public abstract class PluginBase : Screen
         _messageProxy = new(HandleMessageInternal);
         CancellationSource = new CancellationTokenSource();
     }
-
-    #region DeviceAxis
-    protected double GetAxisValue(DeviceAxis axis)
-        => DeviceAxisValueProvider.GetValue(axis);
-    #endregion
 
     #region Shortcut
     [DoNotNotify] protected IReadOnlyObservableConcurrentCollection<string> AvailableActions

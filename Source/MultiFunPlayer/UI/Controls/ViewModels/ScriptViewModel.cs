@@ -2075,7 +2075,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
         p.RegisterProperty<DeviceAxis, double>("Axis::Speed", axis => AxisStates[axis].Speed);
         p.RegisterProperty<DeviceAxis, double>("Axis::SyncTime", axis => AxisStates[axis].SyncTime);
         p.RegisterProperty<DeviceAxis, double>("Axis::TransitionValue", axis => AxisStates[axis].TransitionValue);
-        p.RegisterProperty<DeviceAxis, double>("Axis::Value", axis => AxisStates[axis].Value);
+        p.RegisterProperty<DeviceAxis, double>("Axis::Value", axis => MathUtils.Clamp01(AxisStates[axis].Value));
 
         p.RegisterProperty<DeviceAxis, IScriptResource>("Axis::Script", axis => AxisModels[axis].Script);
         p.RegisterProperty<DeviceAxis, double>("Axis::Position", GetAxisPosition);
