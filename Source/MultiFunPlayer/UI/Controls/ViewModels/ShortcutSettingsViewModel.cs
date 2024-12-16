@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
 using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
@@ -272,9 +272,8 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
         void UpdateSettings(string shortcutName, Action<IShortcut> callback)
         {
             var shortcut = Shortcuts.FirstOrDefault(x => string.Equals(x.Name, shortcutName, StringComparison.Ordinal));
-            if (shortcut == null)
-                return;
-            callback(shortcut);
+            if (shortcut != null)
+                callback(shortcut);
         }
 
         s.RegisterAction<string, bool>("Shortcut::Enabled::Set",
@@ -293,9 +292,9 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
         TOut GetSettings<TOut>(string shortcutName, Func<IShortcut, TOut> callback)
         {
             var shortcut = Shortcuts.FirstOrDefault(x => string.Equals(x.Name, shortcutName, StringComparison.Ordinal));
-            if (shortcut == null)
-                return default;
-            return callback(shortcut);
+            if (shortcut != null)
+                return callback(shortcut);
+            return default;
         }
 
         p.RegisterProperty<string, bool>("Shortcut::Enabled", shortcutName => GetSettings(shortcutName, s => s.Enabled));

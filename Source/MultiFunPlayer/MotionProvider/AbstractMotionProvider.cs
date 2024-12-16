@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
 using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using PropertyChanged;
 using Stylet;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Reflection;
 
 namespace MultiFunPlayer.MotionProvider;
@@ -46,11 +47,7 @@ internal abstract class AbstractMotionProvider : Screen, IMotionProvider
     protected static void RegisterActions<T>(IShortcutManager s, Func<DeviceAxis, T> getInstance) where T : AbstractMotionProvider
     {
         void UpdateProperty(DeviceAxis axis, Action<T> callback)
-        {
-            var motionProvider = getInstance(axis);
-            if (motionProvider != null)
-                callback(motionProvider);
-        }
+            => callback(getInstance(axis) ?? throw new UnreachableException());
 
         var name = typeof(T).GetCustomAttribute<DisplayNameAttribute>(inherit: false).DisplayName;
 
@@ -106,13 +103,7 @@ internal abstract class AbstractMotionProvider : Screen, IMotionProvider
     protected static void RegisterProperties<T>(IPropertyManager p, Func<DeviceAxis, T> getInstance) where T : AbstractMotionProvider
     {
         TOut GetProperty<TOut>(DeviceAxis axis, Func<T, TOut> callback)
-        {
-            var motionProvider = getInstance(axis);
-            if (motionProvider != null)
-                callback(motionProvider);
-
-            return default;
-        }
+            => callback(getInstance(axis) ?? throw new UnreachableException());
 
         var name = typeof(T).GetCustomAttribute<DisplayNameAttribute>(inherit: false).DisplayName;
 
