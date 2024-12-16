@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Property;
 using MultiFunPlayer.Script;
 using MultiFunPlayer.Script.Repository;
@@ -429,6 +429,11 @@ internal sealed class InternalMediaSource(ILocalScriptRepository localRepository
         s.RegisterAction($"{Name}::Looping::Toggle", () => IsLooping = !IsLooping);
         #endregion
 
+        #region LoadAdditionalScripts
+        s.RegisterAction<bool>($"{Name}::LoadAdditionalScripts::Set", s => s.WithLabel("Enable load additional scripts"), enabled => LoadAdditionalScripts = enabled);
+        s.RegisterAction($"{Name}::LoadAdditionalScripts::Toggle", () => LoadAdditionalScripts = !LoadAdditionalScripts);
+        #endregion
+
         #region Playlist
         s.RegisterAction($"{Name}::Playlist::Clear", () => WhenConnected(ClearPlaylist));
         s.RegisterAction($"{Name}::Playlist::Prev", () => WhenConnected(PlayPrevious));
@@ -454,6 +459,7 @@ internal sealed class InternalMediaSource(ILocalScriptRepository localRepository
         base.RegisterProperties(p);
         p.RegisterProperty($"{Name}::IsShuffling", () => IsShuffling);
         p.RegisterProperty($"{Name}::Looping", () => IsLooping);
+        p.RegisterProperty($"{Name}::LoadAdditionalScripts", () => LoadAdditionalScripts);
         p.RegisterProperty($"{Name}::CurrentFile", () => _currentItem?.AsRefreshed()?.AsFileInfo());
         p.RegisterProperty($"{Name}::PlaylistIndex", () => PlaylistIndex);
         p.RegisterProperty<IReadOnlyCollection<FileInfo>>($"{Name}::PlaylistFiles", () =>
