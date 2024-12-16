@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using NLog;
 
 namespace MultiFunPlayer.Property;
 
@@ -19,6 +20,8 @@ internal interface IPropertyManager
 
 internal sealed class PropertyManager : IPropertyManager
 {
+    private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+
     private readonly ObservableConcurrentCollection<string> _availableProperties;
     private readonly ObservableConcurrentDictionary<string, IPropertyDelegate> _properties;
 
@@ -34,6 +37,8 @@ internal sealed class PropertyManager : IPropertyManager
     {
         _properties.Add(propertyName, propertyDelegate);
         _availableProperties.Add(propertyName);
+
+        Logger.Trace("Registered \"{0}\" property", propertyName);
     }
 
     public void RegisterProperty<TOut>(string propertyName, Func<TOut> getter) => RegisterProperty(propertyName, new PropertyDelegate<TOut>(getter));
@@ -44,6 +49,8 @@ internal sealed class PropertyManager : IPropertyManager
     {
         _availableProperties.Remove(propertyName);
         _properties.Remove(propertyName);
+
+        Logger.Debug("Unregistered \"{0}\" property", propertyName);
     }
 
     public TOut GetValue<TOut>(string propertyName, params object[] args)
