@@ -327,9 +327,10 @@ internal sealed class InternalMediaSource(ILocalScriptRepository localRepository
 
         void ResetState()
         {
-            SetDuration(double.NaN);
-            SetPosition(double.NaN);
+            _duration = double.NaN;
+            _position = double.NaN;
             PublishMessage(new ChangeScriptMessage(DeviceAxis.All, null));
+            PublishMessage(new MediaResetMessage());
         }
     }
 
@@ -337,14 +338,14 @@ internal sealed class InternalMediaSource(ILocalScriptRepository localRepository
     {
         _duration = duration;
         if (Status is ConnectionStatus.Connected or ConnectionStatus.Disconnecting)
-            PublishMessage(new MediaDurationChangedMessage(double.IsFinite(duration) ? TimeSpan.FromSeconds(duration) : null));
+            PublishMessage(new MediaDurationChangedMessage(TimeSpan.FromSeconds(duration)));
     }
 
     private void SetPosition(double position, bool forceSeek = false)
     {
         _position = position;
         if (Status is ConnectionStatus.Connected or ConnectionStatus.Disconnecting)
-            PublishMessage(new MediaPositionChangedMessage(double.IsFinite(position) ? TimeSpan.FromSeconds(position) : null, forceSeek));
+            PublishMessage(new MediaPositionChangedMessage(TimeSpan.FromSeconds(position), forceSeek));
     }
 
     private void SetSpeed(double speed)

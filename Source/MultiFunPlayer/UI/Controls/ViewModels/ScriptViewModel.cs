@@ -586,10 +586,10 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
 
     public void Handle(MediaDurationChangedMessage message)
     {
-        var newDuration = message.Duration?.TotalSeconds ?? double.NaN;
+        var newDuration = message.Duration.TotalSeconds;
         if (MediaDuration != newDuration)
         {
-            Logger.Info("Received {0} [Duration: {1}]", nameof(MediaDurationChangedMessage), message.Duration?.ToString());
+            Logger.Info("Received {0} [Duration: {1}]", nameof(MediaDurationChangedMessage), message.Duration.ToString());
             MediaDuration = newDuration;
         }
 
@@ -618,14 +618,8 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
                 state.EndUpdate();
         }
 
-        var newPosition = message.Position?.TotalSeconds ?? double.NaN;
-        Logger.Trace("Received {0} [Position: {1}]", nameof(MediaPositionChangedMessage), message.Position?.ToString());
-
-        if (!double.IsFinite(newPosition))
-        {
-            SetMediaPositionInternal(double.NaN);
-            return;
-        }
+        var newPosition = message.Position.TotalSeconds;
+        Logger.Trace("Received {0} [Position: {1}]", nameof(MediaPositionChangedMessage), message.Position.ToString());
 
         if (!double.IsFinite(MediaPosition))
         {
