@@ -7,7 +7,9 @@ using Newtonsoft.Json.Linq;
 using PropertyChanged;
 using Stylet;
 using StyletIoC;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Windows;
 
 namespace MultiFunPlayer.Plugin;
@@ -27,7 +29,7 @@ public abstract class PluginBase : Screen
 
     protected PluginBase()
     {
-        DisplayName = GetType().Name;
+        DisplayName = GetType().GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? GetType().Name;
         _messageProxy = new(HandleMessageInternal);
         CancellationSource = new CancellationTokenSource();
     }
