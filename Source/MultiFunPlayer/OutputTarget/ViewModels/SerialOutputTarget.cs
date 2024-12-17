@@ -59,7 +59,8 @@ internal sealed class SerialOutputTarget(int instanceIndex, IEventAggregator eve
     protected override void OnInitialActivate()
     {
         base.OnInitialActivate();
-        _ = RefreshPorts();
+        if (Status == ConnectionStatus.Disconnected)
+            _ = RefreshPorts();
     }
 
     public bool CanChangePort => !IsRefreshBusy && !IsConnectBusy && !IsConnected;

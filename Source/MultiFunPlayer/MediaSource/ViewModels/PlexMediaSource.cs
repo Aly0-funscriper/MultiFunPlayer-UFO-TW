@@ -47,7 +47,8 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IPropert
     protected override void OnInitialActivate()
     {
         base.OnInitialActivate();
-        _ = RefreshClients();
+        if (Status == ConnectionStatus.Disconnected)
+            _ = RefreshClients();
     }
 
     protected override async ValueTask<bool> OnConnectingAsync(ConnectionType connectionType)

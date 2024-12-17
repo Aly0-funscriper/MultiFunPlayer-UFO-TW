@@ -43,7 +43,8 @@ internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IPropert
     protected override void OnInitialActivate()
     {
         base.OnInitialActivate();
-        _ = RefreshDevices();
+        if (Status == ConnectionStatus.Disconnected)
+            _ = RefreshDevices();
     }
 
     protected override async ValueTask<bool> OnConnectingAsync(ConnectionType connectionType)
