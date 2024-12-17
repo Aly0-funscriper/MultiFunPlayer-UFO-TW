@@ -1,6 +1,6 @@
 ﻿namespace MultiFunPlayer.Common;
 
-internal enum ConnectionStatus
+public enum ConnectionStatus
 {
     Disconnected,
     Disconnecting,

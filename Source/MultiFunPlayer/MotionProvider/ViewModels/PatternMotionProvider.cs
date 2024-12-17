@@ -8,7 +8,7 @@ using System.Reflection;
 
 namespace MultiFunPlayer.MotionProvider.ViewModels;
 
-internal enum PatternType
+public enum PatternType
 {
     Triangle,
     Sine,

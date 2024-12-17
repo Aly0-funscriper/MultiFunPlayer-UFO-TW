@@ -2371,7 +2371,7 @@ internal sealed class AxisSettings : PropertyChangedBase
     }
 }
 
-internal enum SmartLimitMode
+public enum SmartLimitMode
 {
     Value,
     Speed
