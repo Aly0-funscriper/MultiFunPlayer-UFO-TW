@@ -31,7 +31,8 @@ namespace MultiFunPlayer.UI.Controls.ViewModels;
 [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
 internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDisposable,
     IHandle<MediaPositionChangedMessage>, IHandle<MediaPlayingChangedMessage>, IHandle<MediaPathChangedMessage>, IHandle<MediaDurationChangedMessage>,
-    IHandle<MediaSpeedChangedMessage>, IHandle<SettingsMessage>, IHandle<SyncRequestMessage>, IHandle<ReloadScriptsRequestMessage>, IHandle<ChangeScriptMessage>
+    IHandle<MediaSpeedChangedMessage>, IHandle<SettingsMessage>, IHandle<SyncRequestMessage>, IHandle<ReloadScriptsRequestMessage>, IHandle<ChangeScriptMessage>,
+    IHandle<MediaResetMessage>
 {
     private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
 
@@ -649,6 +650,12 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
         {
             _internalMediaPosition += 0.33 * (newPosition - _internalMediaPosition);
         }
+    }
+
+    public void Handle(MediaResetMessage message)
+    {
+        Logger.Trace("Received {0}", nameof(MediaResetMessage));
+        InvalidateMediaState();
     }
 
     public void Handle(SettingsMessage message)

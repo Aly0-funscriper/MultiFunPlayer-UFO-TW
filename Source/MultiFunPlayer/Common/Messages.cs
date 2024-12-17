@@ -18,6 +18,7 @@ public sealed record MediaPositionChangedMessage(TimeSpan? Position, bool ForceS
 public sealed record MediaPlayingChangedMessage(bool IsPlaying);
 public sealed record MediaPathChangedMessage(string Path, bool ReloadScripts = true, object Context = null);
 public sealed record MediaDurationChangedMessage(TimeSpan? Duration);
+public sealed record MediaResetMessage();
 
 public sealed record PreScriptSearchMessage(MediaResourceInfo MediaResource);
 public sealed record PostScriptSearchMessage(MediaResourceInfo MediaResource, Dictionary<DeviceAxis, IScriptResource> Scripts);

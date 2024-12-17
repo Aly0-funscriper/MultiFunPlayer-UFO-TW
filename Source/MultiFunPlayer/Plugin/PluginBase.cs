@@ -129,6 +129,7 @@ public abstract class PluginBase : Screen
     protected void PublishMessage(MediaPlayingChangedMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaPathChangedMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaDurationChangedMessage message) => EventAggregator.Publish(message);
+    protected void PublishMessage(MediaResetMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(ChangeScriptMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaSeekMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaPlayPauseMessage message) => EventAggregator.Publish(message);
@@ -142,6 +143,7 @@ public abstract class PluginBase : Screen
     protected virtual void HandleMessage(MediaPlayingChangedMessage message) { }
     protected virtual void HandleMessage(MediaPathChangedMessage message) { }
     protected virtual void HandleMessage(MediaDurationChangedMessage message) { }
+    protected virtual void HandleMessage(MediaResetMessage message) { }
     protected virtual void HandleMessage(PreScriptSearchMessage message) { }
     protected virtual void HandleMessage(PostScriptSearchMessage message) { }
     protected virtual void HandleMessage(ScriptChangedMessage message) { }
@@ -156,6 +158,7 @@ public abstract class PluginBase : Screen
     protected virtual ValueTask HandleMessageAsync(MediaPlayingChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
     protected virtual ValueTask HandleMessageAsync(MediaPathChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
     protected virtual ValueTask HandleMessageAsync(MediaDurationChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaResetMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
     protected virtual ValueTask HandleMessageAsync(PreScriptSearchMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
     protected virtual ValueTask HandleMessageAsync(PostScriptSearchMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
     protected virtual ValueTask HandleMessageAsync(ScriptChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
