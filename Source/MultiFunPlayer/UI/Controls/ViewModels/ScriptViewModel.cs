@@ -996,6 +996,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
 
     private void InvalidateMediaState()
     {
+        IsPlaying = false;
         MediaResource = null;
         MediaDuration = double.NaN;
         PlaybackSpeed = 1;

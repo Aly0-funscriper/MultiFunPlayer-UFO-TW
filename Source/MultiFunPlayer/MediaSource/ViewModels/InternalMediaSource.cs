@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using MultiFunPlayer.Property;
 using MultiFunPlayer.Script;
 using MultiFunPlayer.Script.Repository;
@@ -329,6 +329,7 @@ internal sealed class InternalMediaSource(ILocalScriptRepository localRepository
         {
             _duration = double.NaN;
             _position = double.NaN;
+            _isPlaying = false;
             PublishMessage(new ChangeScriptMessage(DeviceAxis.All, null));
             PublishMessage(new MediaResetMessage());
         }
