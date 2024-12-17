@@ -435,7 +435,8 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
                         if (!double.IsFinite(state.AutoHomeStartValue))
                             state.AutoHomeStartValue = double.IsFinite(context.LastValue) ? context.LastValue : axis.DefaultValue;
 
-                        context.Value = MathUtils.Clamp01(MathUtils.Lerp(state.AutoHomeStartValue, settings.AutoHomeTargetValue, t * Math.Pow(2, 8 * (t - 1))));
+                        t = MathUtils.Clamp01(t);
+                        context.Value = MathUtils.Clamp01(MathUtils.Lerp(state.AutoHomeStartValue, settings.AutoHomeTargetValue, t * t * (3 - 2 * t)));
                         return true;
                     }
 
