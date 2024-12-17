@@ -648,7 +648,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
 
     public void Handle(MediaResetMessage message)
     {
-        Logger.Trace("Received {0}", nameof(MediaResetMessage));
+        Logger.Debug("Received {0}", nameof(MediaResetMessage));
         InvalidateMediaState();
     }
 
