@@ -407,6 +407,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
                 void ResetAutoHome()
                 {
                     state.AutoHomeTime = 0;
+                    state.AutoHomeStartValue = double.NaN;
                     context.IsAutoHoming = false;
                 }
 
@@ -431,9 +432,10 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
                             return true;
                         }
 
-                        var from = double.IsFinite(context.LastValue) ? context.LastValue : axis.DefaultValue;
-                        context.Value = MathUtils.Clamp01(MathUtils.Lerp(from, settings.AutoHomeTargetValue, t * Math.Pow(2, 8 * (t - 1))));
+                        if (!double.IsFinite(state.AutoHomeStartValue))
+                            state.AutoHomeStartValue = double.IsFinite(context.LastValue) ? context.LastValue : axis.DefaultValue;
 
+                        context.Value = MathUtils.Clamp01(MathUtils.Lerp(state.AutoHomeStartValue, settings.AutoHomeTargetValue, t * Math.Pow(2, 8 * (t - 1))));
                         return true;
                     }
 
@@ -2134,6 +2136,7 @@ internal sealed partial class AxisState
 
     [DoNotNotify] public double SyncTime { get; set; } = 0;
     [DoNotNotify] public double AutoHomeTime { get; set; } = 0;
+    [DoNotNotify] public double AutoHomeStartValue { get; set; } = double.NaN;
 
     [DoNotNotify] public bool IsDirty { get; set; } = false;
     [DoNotNotify] public bool IsAutoHoming { get; set; } = false;
