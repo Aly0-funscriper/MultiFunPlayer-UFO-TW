@@ -129,38 +129,41 @@ public abstract class PluginBase : Screen
     protected void PublishMessage(MediaPlayingChangedMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaPathChangedMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaDurationChangedMessage message) => EventAggregator.Publish(message);
+    protected void PublishMessage(ChangeScriptMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaSeekMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaPlayPauseMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaChangePathMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaChangeSpeedMessage message) => EventAggregator.Publish(message);
-    protected void PublishMessage(ChangeScriptMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(SyncRequestMessage message) => EventAggregator.Publish(message);
+    protected void PublishMessage(ReloadScriptsRequestMessage message) => EventAggregator.Publish(message);
 
     protected virtual void HandleMessage(MediaSpeedChangedMessage message) { }
     protected virtual void HandleMessage(MediaPositionChangedMessage message) { }
-    protected virtual void HandleMessage(MediaPlayPauseMessage message) { }
+    protected virtual void HandleMessage(MediaPlayingChangedMessage message) { }
     protected virtual void HandleMessage(MediaPathChangedMessage message) { }
     protected virtual void HandleMessage(MediaDurationChangedMessage message) { }
+    protected virtual void HandleMessage(PreScriptSearchMessage message) { }
+    protected virtual void HandleMessage(PostScriptSearchMessage message) { }
+    protected virtual void HandleMessage(ScriptChangedMessage message) { }
     protected virtual void HandleMessage(MediaSeekMessage message) { }
-    protected virtual void HandleMessage(MediaPlayingChangedMessage message) { }
+    protected virtual void HandleMessage(MediaPlayPauseMessage message) { }
     protected virtual void HandleMessage(MediaChangePathMessage message) { }
     protected virtual void HandleMessage(MediaChangeSpeedMessage message) { }
-    protected virtual void HandleMessage(ScriptChangedMessage message) { }
     protected virtual void HandleMessage(SyncRequestMessage message) { }
-    protected virtual void HandleMessage(PostScriptSearchMessage message) { }
 
     protected virtual ValueTask HandleMessageAsync(MediaSpeedChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
     protected virtual ValueTask HandleMessageAsync(MediaPositionChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
-    protected virtual ValueTask HandleMessageAsync(MediaPlayPauseMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaPlayingChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
     protected virtual ValueTask HandleMessageAsync(MediaPathChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
     protected virtual ValueTask HandleMessageAsync(MediaDurationChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(PreScriptSearchMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(PostScriptSearchMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(ScriptChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
     protected virtual ValueTask HandleMessageAsync(MediaSeekMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
-    protected virtual ValueTask HandleMessageAsync(MediaPlayingChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaPlayPauseMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
     protected virtual ValueTask HandleMessageAsync(MediaChangePathMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
     protected virtual ValueTask HandleMessageAsync(MediaChangeSpeedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
-    protected virtual ValueTask HandleMessageAsync(ScriptChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
     protected virtual ValueTask HandleMessageAsync(SyncRequestMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
-    protected virtual ValueTask HandleMessageAsync(PostScriptSearchMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
 
     private void HandleMessageInternal(object e)
     {
