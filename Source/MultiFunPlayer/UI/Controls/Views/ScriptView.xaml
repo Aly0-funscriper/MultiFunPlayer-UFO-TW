@@ -140,7 +140,7 @@
                                                        HorizontalAlignment="Left"
                                                        VerticalAlignment="Center"
                                                        FontWeight="Bold"
-                                                       Text="Sync when:"
+                                                       Text="Sync on:"
                                                        Typography.Capitals="AllSmallCaps"/>
                                             <material:ColorZone DockPanel.Dock="Left"
                                                                 Width="14"
@@ -163,37 +163,37 @@
                                                                    Kind="ExclamationBold"/>
                                             </material:ColorZone>
                                         </DockPanel>
-                                        <DockPanel Margin="0 5 0 0" LastChildFill="False">
+                                        <DockPanel Margin="0 2 0 0" LastChildFill="False">
                                             <TextBlock DockPanel.Dock="Left" Text="Media resource changed:"/>
                                             <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding SyncSettings.SyncOnMediaResourceChanged}"/>
                                         </DockPanel>
 
-                                        <DockPanel Margin="0 5 0 0" LastChildFill="False">
+                                        <DockPanel Margin="0 2 0 0" LastChildFill="False">
                                             <TextBlock DockPanel.Dock="Left" Text="Script resource changed:"/>
                                             <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding SyncSettings.SyncOnScriptResourceChanged}"/>
                                         </DockPanel>
 
-                                        <DockPanel Margin="0 5 0 0" LastChildFill="False">
+                                        <DockPanel Margin="0 2 0 0" LastChildFill="False">
                                             <TextBlock DockPanel.Dock="Left" Text="Script start:"/>
                                             <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding SyncSettings.SyncOnScriptStart}"/>
                                         </DockPanel>
 
-                                        <DockPanel Margin="0 5 0 0" LastChildFill="False">
+                                        <DockPanel Margin="0 2 0 0" LastChildFill="False">
                                             <TextBlock DockPanel.Dock="Left" Text="Script end:"/>
                                             <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding SyncSettings.SyncOnScriptEnd}"/>
                                         </DockPanel>
 
-                                        <DockPanel Margin="0 5 0 0" LastChildFill="False">
+                                        <DockPanel Margin="0 2 0 0" LastChildFill="False">
                                             <TextBlock DockPanel.Dock="Left" Text="Media play/pause:"/>
                                             <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding SyncSettings.SyncOnMediaPlayPause}"/>
                                         </DockPanel>
 
-                                        <DockPanel Margin="0 5 0 0" LastChildFill="False">
-                                            <TextBlock DockPanel.Dock="Left" Text="Seek:"/>
+                                        <DockPanel Margin="0 2 0 0" LastChildFill="False">
+                                            <TextBlock DockPanel.Dock="Left" Text="Media seek:"/>
                                             <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding SyncSettings.SyncOnSeek}"/>
                                         </DockPanel>
 
-                                        <DockPanel Margin="0 5 0 0" LastChildFill="False">
+                                        <DockPanel Margin="0 2 0 0" LastChildFill="False">
                                             <TextBlock DockPanel.Dock="Left" Text="Auto-home start/end:"/>
                                             <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding SyncSettings.SyncOnAutoHomeStartEnd}"/>
                                         </DockPanel>
