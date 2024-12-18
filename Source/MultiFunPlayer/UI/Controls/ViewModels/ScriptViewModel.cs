@@ -209,7 +209,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
                     var beforeIndex = context.Index;
                     context.Index = keyframes.AdvanceIndex(context.Index, axisPosition);
 
-                    if (beforeIndex == AxisState.BeforeScriptIndex && context.Index >= 0)
+                    if (SyncSettings.SyncOnScriptStart && beforeIndex == AxisState.BeforeScriptIndex && context.Index >= 0)
                     {
                         Logger.Debug("Resetting sync on script start [Axis: {0}]", axis);
                         ResetSyncNoLock(state);
@@ -217,7 +217,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
 
                     if (!keyframes.ValidateIndex(context.Index) || !keyframes.ValidateIndex(context.Index + 1))
                     {
-                        if (context.Index + 1 >= keyframes.Count)
+                        if (SyncSettings.SyncOnScriptEnd && context.Index + 1 >= keyframes.Count)
                         {
                             Logger.Debug("Resetting sync on script end [Axis: {0}]", axis);
                             context.Index = AxisState.AfterScriptIndex;
@@ -2413,6 +2413,8 @@ internal sealed class SyncSettings : PropertyChangedBase
     [JsonProperty] public double Duration { get; set; } = 4;
     [JsonProperty] public bool SyncOnMediaResourceChanged { get; set; } = true;
     [JsonProperty] public bool SyncOnScriptResourceChanged { get; set; } = true;
+    [JsonProperty] public bool SyncOnScriptStart { get; set; } = true;
+    [JsonProperty] public bool SyncOnScriptEnd { get; set; } = true;
     [JsonProperty] public bool SyncOnMediaPlayPause { get; set; } = true;
     [JsonProperty] public bool SyncOnSeek { get; set; } = true;
     [JsonProperty] public bool SyncOnAutoHomeStartEnd { get; set; } = true;
