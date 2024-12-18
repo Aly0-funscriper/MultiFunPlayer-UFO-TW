@@ -243,23 +243,18 @@ internal static partial class PluginCompiler
 
             var assembly = context.LoadFromStream(peStream, pdbStream);
             var pluginType = assembly.GetExportedTypes().FirstOrDefault(t => t.IsAssignableTo(typeof(PluginBase)));
-
             if (pluginType == null)
                 return PluginCompilationResult.FromFailure(context, new PluginCompileException("Unable to find exported Plugin type"));
 
-            var instance = default(PluginBase);
             try
             {
-                instance = BuildUpPluginInstance(Activator.CreateInstance(pluginType) as PluginBase);
-                if (instance.View?.GetType().IsAssignableTo(typeof(PluginViewBase)) == false)
-                    return PluginCompilationResult.FromFailure(context, new PluginCompileException("Plugin view must extend PluginViewBase"));
+                var instance = BuildUpPluginInstance(Activator.CreateInstance(pluginType) as PluginBase);
+                return PluginCompilationResult.FromSuccess(context, instance);
             }
             catch (Exception e)
             {
                 return PluginCompilationResult.FromFailure(context, e);
             }
-
-            return PluginCompilationResult.FromSuccess(context, instance);
 
             PluginBase BuildUpPluginInstance(PluginBase instance)
             {
@@ -268,7 +263,7 @@ internal static partial class PluginCompiler
                 return instance;
             }
 
-            UIElement CreateAndBindPluginInstanceView(PluginBase instance)
+            void CreateAndBindPluginInstanceView(PluginBase instance)
             {
                 var view = default(UIElement);
                 Execute.OnUIThreadSync(() =>
@@ -278,7 +273,8 @@ internal static partial class PluginCompiler
                         ViewManager.BindViewToModel(view, instance);
                 });
 
-                return view;
+                if (view?.GetType().IsAssignableTo(typeof(PluginViewBase)) == false)
+                    throw new PluginCompileException("Plugin view must extend PluginViewBase");
             }
         }
         catch (Exception e)
