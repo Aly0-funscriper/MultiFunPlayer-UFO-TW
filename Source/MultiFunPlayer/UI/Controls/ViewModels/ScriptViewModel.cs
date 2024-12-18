@@ -561,6 +561,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
         if (SyncSettings.SyncOnMediaResourceChanged)
             ResetSync(true);
 
+        SetSyncBypass(true);
         ResetAxes(null);
         if (message.ReloadScripts)
             ReloadAxes(null);
@@ -569,6 +570,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
             InvalidateMediaState();
 
         InvalidateAxisState(null);
+        SetSyncBypass(false);
     }
 
     public void Handle(MediaPlayingChangedMessage message)
@@ -652,13 +654,14 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
         if (MediaResource == null)
             return;
 
-        if (MediaResource != null)
-            if (SyncSettings.SyncOnMediaResourceChanged)
-                ResetSync(true);
+        if (SyncSettings.SyncOnMediaResourceChanged)
+            ResetSync(true);
 
+        SetSyncBypass(true);
         ResetAxes(null);
         InvalidateMediaState();
         InvalidateAxisState(null);
+        SetSyncBypass(false);
     }
 
     public void Handle(SettingsMessage message)
@@ -804,7 +807,16 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
         NotifyOfPropertyChange(nameof(SyncProgress));
     }
 
-    private void ResetSyncNoLock(AxisState state, bool isSyncing = true) => state.SyncTime = isSyncing ? SyncSettings.Duration : 0;
+    private bool _syncBypass;
+    private void SetSyncBypass(bool value) => _syncBypass = value;
+
+    private void ResetSyncNoLock(AxisState state, bool isSyncing = true)
+    {
+        if (_syncBypass)
+            return;
+
+        state.SyncTime = isSyncing ? SyncSettings.Duration : 0;
+    }
     #endregion
 
     #region UI Common
