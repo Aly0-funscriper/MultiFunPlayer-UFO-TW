@@ -35,7 +35,10 @@ internal sealed class PropertyManager : IPropertyManager
 
     private void RegisterProperty(string propertyName, IPropertyDelegate propertyDelegate)
     {
-        _properties.Add(propertyName, propertyDelegate);
+        var added = _properties.TryAdd(propertyName, propertyDelegate);
+        if (!added)
+            throw new ArgumentException($"An item with the same key has already been added. Key: {propertyName}");
+
         _availableProperties.Add(propertyName);
 
         Logger.Trace("Registered \"{0}\" property", propertyName);

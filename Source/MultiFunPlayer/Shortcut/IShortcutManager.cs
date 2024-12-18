@@ -123,7 +123,10 @@ internal sealed class ShortcutManager : IShortcutManager, IHandle<IInputGesture>
     private void RegisterAction(string actionName, IShortcutAction action, params IEnumerable<IShortcutSettingBuilder> builders)
     {
         var builder = new ShortcutActionConfigurationBuilder(actionName, builders);
-        _actions.Add(actionName, (action, builder));
+        var added = _actions.TryAdd(actionName, (action, builder));
+        if (!added)
+            throw new ArgumentException($"An item with the same key has already been added. Key: {actionName}");
+
         _availableActions.Add(actionName);
 
         Logger.Trace("Registered \"{0}\" action", actionName);
