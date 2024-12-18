@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using MultiFunPlayer.UI.Dialogs.ViewModels;
@@ -17,7 +18,8 @@ using System.Windows;
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("MPV")]
-internal sealed class MpvMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class MpvMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     private static string PipeName { get; } = "multifunplayer-mpv";
 
@@ -58,7 +60,7 @@ internal sealed class MpvMediaSource(IShortcutManager shortcutManager, IEventAgg
             }
             else
             {
-                var result = (MessageBoxResult)await DialogHelper.ShowAsync(new MessageBoxDialog("Mpv executable not found!\nWould you like to download it now?", MessageBoxButton.YesNo), "RootDialog");
+                var result = await DialogHelper.ShowAsync<MessageBoxResult>(new MessageBoxDialog("Mpv executable not found!\nWould you like to download it now?", MessageBoxButton.YesNo), "RootDialog");
                 if (result != MessageBoxResult.Yes)
                     throw new MediaSourceException("Could not find mpv executable! Set path to mpv.exe manually or download latest release from settings.");
 
@@ -142,8 +144,7 @@ internal sealed class MpvMediaSource(IShortcutManager shortcutManager, IEventAgg
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(NamedPipeClientStream client, StreamReader reader, CancellationToken token)
@@ -173,7 +174,10 @@ internal sealed class MpvMediaSource(IShortcutManager shortcutManager, IEventAgg
                         switch (propertyName)
                         {
                             case "path":
-                                PublishMessage(new MediaPathChangedMessage(dataToken.TryToObject<string>(out var path) && !string.IsNullOrWhiteSpace(path) ? path : null));
+                                if (dataToken.TryToObject<string>(out var path) && !string.IsNullOrWhiteSpace(path))
+                                    PublishMessage(new MediaPathChangedMessage(path));
+                                else
+                                    PublishMessage(new MediaResetMessage());
                                 break;
                             case "pause":
                                 if (dataToken.TryToObject<string>(out var paused))
@@ -346,5 +350,11 @@ internal sealed class MpvMediaSource(IShortcutManager shortcutManager, IEventAgg
         #region Arguments
         s.RegisterAction<string>($"{Name}::Arguments::Set", s => s.WithLabel("Arguments") , arguments => Arguments = arguments);
         #endregion
+    }
+
+    protected override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Name}::Arguments", () => Arguments);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using Newtonsoft.Json;
 using Stylet;
@@ -7,7 +8,7 @@ using System.Reflection;
 
 namespace MultiFunPlayer.MotionProvider.ViewModels;
 
-internal enum PatternType
+public enum PatternType
 {
     Triangle,
     Sine,
@@ -74,5 +75,22 @@ internal sealed class PatternMotionProvider(DeviceAxis target, IEventAggregator 
             s => s.WithLabel("Pattern").WithItemsSource(Enum.GetValues<PatternType>()),
             (axis, pattern) => UpdateProperty(axis, p => p.Pattern = pattern));
         #endregion
+    }
+
+    public static void RegisterProperties(IPropertyManager p, Func<DeviceAxis, PatternMotionProvider> getInstance)
+    {
+        TOut GetProperty<TOut>(DeviceAxis axis, Func<PatternMotionProvider, TOut> callback)
+        {
+            var motionProvider = getInstance(axis);
+            if (motionProvider != null)
+                callback(motionProvider);
+
+            return default;
+        }
+
+        AbstractMotionProvider.RegisterProperties(p, getInstance);
+        var name = typeof(PatternMotionProvider).GetCustomAttribute<DisplayNameAttribute>(inherit: false).DisplayName;
+
+        p.RegisterProperty<DeviceAxis, PatternType>($"MotionProvider::{name}::Pattern", axis => GetProperty(axis, p => p.Pattern));
     }
 }

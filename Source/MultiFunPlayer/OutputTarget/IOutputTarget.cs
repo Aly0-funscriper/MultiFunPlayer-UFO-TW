@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using Newtonsoft.Json.Linq;
 
@@ -14,4 +15,6 @@ internal interface IOutputTarget : IConnectable, IDisposable
 
     void RegisterActions(IShortcutManager shortcutManager);
     void UnregisterActions(IShortcutManager shortcutManager);
+    void RegisterProperties(IPropertyManager propertyManager);
+    void UnregisterProperties(IPropertyManager propertyManager);
 }

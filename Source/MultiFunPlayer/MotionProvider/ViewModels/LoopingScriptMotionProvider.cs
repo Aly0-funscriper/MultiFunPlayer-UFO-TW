@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Script;
 using MultiFunPlayer.Shortcut;
 using Newtonsoft.Json;
@@ -104,5 +105,23 @@ internal sealed class LoopingScriptMotionProvider(DeviceAxis target, IEventAggre
             s => s.WithLabel("Interpolation type").WithItemsSource(Enum.GetValues<InterpolationType>()),
             (axis, interpolation) => UpdateProperty(axis, p => p.InterpolationType = interpolation));
         #endregion
+    }
+
+    public static void RegisterProperties(IPropertyManager p, Func<DeviceAxis, LoopingScriptMotionProvider> getInstance)
+    {
+        TOut GetProperty<TOut>(DeviceAxis axis, Func<LoopingScriptMotionProvider, TOut> callback)
+        {
+            var motionProvider = getInstance(axis);
+            if (motionProvider != null)
+                callback(motionProvider);
+
+            return default;
+        }
+
+        AbstractMotionProvider.RegisterProperties(p, getInstance);
+        var name = typeof(LoopingScriptMotionProvider).GetCustomAttribute<DisplayNameAttribute>(inherit: false).DisplayName;
+
+        p.RegisterProperty<DeviceAxis, IScriptResource>($"MotionProvider::{name}::Script", axis => GetProperty(axis, p => p.Script));
+        p.RegisterProperty<DeviceAxis, InterpolationType>($"MotionProvider::{name}::Interpolation", axis => GetProperty(axis, p => p.InterpolationType));
     }
 }

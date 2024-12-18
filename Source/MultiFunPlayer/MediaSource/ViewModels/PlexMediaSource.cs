@@ -9,11 +9,13 @@ using System.Net.Http.Headers;
 using System.Xml;
 using Newtonsoft.Json.Linq;
 using MultiFunPlayer.Shortcut;
+using MultiFunPlayer.Property;
 
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("Plex")]
-internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     private CancellationTokenSource _refreshCancellationSource = new();
     private XmlNode _currentTimeline;
@@ -45,7 +47,8 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAg
     protected override void OnInitialActivate()
     {
         base.OnInitialActivate();
-        _ = RefreshClients();
+        if (Status == ConnectionStatus.Disconnected)
+            _ = RefreshClients();
     }
 
     protected override async ValueTask<bool> OnConnectingAsync(ConnectionType connectionType)
@@ -72,7 +75,9 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAg
 
         try
         {
-            client.Timeout = TimeSpan.FromMilliseconds(500);
+            if (connectionType == ConnectionType.AutoConnect)
+                client.Timeout = TimeSpan.FromMilliseconds(500);
+
             var message = new HttpRequestMessage(HttpMethod.Head, new Uri(ServerBaseUri, "/clients"));
             AddDefaultHeaders(message.Headers);
 
@@ -109,8 +114,7 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAg
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(HttpClient httpClient, CancellationToken token)
@@ -124,12 +128,14 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAg
             using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(500));
             while (await timer.WaitForNextTickAsync(token) && !token.IsCancellationRequested)
             {
-                _currentTimeline = await GetCurrentTimelineAsync();
-                if (_currentTimeline == null)
+                var timeline = await GetCurrentTimelineAsync();
+                if (timeline == null)
                 {
                     ResetState();
                     continue;
                 }
+
+                _currentTimeline = timeline;
 
                 var timeAttribute = _currentTimeline.Attributes["time"];
                 var keyAttribute = _currentTimeline.Attributes["key"];
@@ -188,7 +194,7 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAg
                 var duration = TimeSpan.FromMilliseconds(int.Parse(durationAttribute.Value));
                 var path = fileAttribute.Value;
 
-                if (string.IsNullOrEmpty(path))
+                if (string.IsNullOrWhiteSpace(path))
                     return false;
 
                 PublishMessage(new MediaPathChangedMessage(path));
@@ -254,10 +260,12 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAg
 
             void ResetState()
             {
+                if (_currentTimeline == null)
+                    return;
+
                 _currentTimeline = null;
                 lastMetadataUri = null;
-                PublishMessage(new MediaPathChangedMessage(null));
-                PublishMessage(new MediaPlayingChangedMessage(false));
+                PublishMessage(new MediaResetMessage());
             }
         }
         catch (OperationCanceledException e) when (e.InnerException is TimeoutException t) { t.Throw(); }
@@ -320,13 +328,13 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAg
     public bool CanRefreshClients => !IsRefreshBusy && IsDisconnected && ServerBaseUri != null && !string.IsNullOrWhiteSpace(PlexToken);
     public bool IsRefreshBusy { get; set; }
 
-    private int _isRefreshingFlag;
+    private bool _isRefreshingFlag;
     public async Task RefreshClients()
     {
         if (string.IsNullOrWhiteSpace(PlexToken))
             return;
 
-        if (Interlocked.CompareExchange(ref _isRefreshingFlag, 1, 0) != 0)
+        if (Interlocked.CompareExchange(ref _isRefreshingFlag, true, false))
             return;
 
         try
@@ -343,7 +351,7 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAg
         }
         finally
         {
-            Interlocked.Decrement(ref _isRefreshingFlag);
+            Interlocked.Exchange(ref _isRefreshingFlag, false);
             IsRefreshBusy = false;
         }
 
@@ -353,7 +361,6 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAg
             Logger.Debug("Refreshing clients");
 
             using var client = NetUtils.CreateHttpClient();
-            client.Timeout = TimeSpan.FromMilliseconds(5000);
 
             var message = new HttpRequestMessage(HttpMethod.Get, new Uri(ServerBaseUri, "/clients"));
             AddDefaultHeaders(message.Headers);
@@ -461,6 +468,12 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IEventAg
         #region RefreshClients
         s.RegisterAction($"{Name}::RefreshClients", async () => { if (CanRefreshClients) await RefreshClients(); });
         #endregion
+    }
+
+    protected override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Name}::ServerBaseUri", () => ServerBaseUri);
     }
 
     private void AddDefaultHeaders(HttpRequestHeaders headers)

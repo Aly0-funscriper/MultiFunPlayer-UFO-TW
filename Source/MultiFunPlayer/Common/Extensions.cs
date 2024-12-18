@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Stylet;
 using System.Buffers;
 using System.Collections;
 using System.Diagnostics;
@@ -222,6 +223,9 @@ public static class CollectionExtensions
         foreach (var (key, value) in other)
             dictionary[key] = value;
     }
+
+    public static int IndexOf<T>(this IReadOnlyObservableCollection<T> collection, T item)
+        => ((IObservableCollection<T>)collection).IndexOf(item);
 }
 
 public static class StreamExtensions

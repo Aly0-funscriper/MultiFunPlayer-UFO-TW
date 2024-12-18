@@ -89,7 +89,6 @@ public sealed class NonReloadingTabControl : TabControl
                     }
                 }
 
-                UpdateSelectedItem();
                 break;
 
             case NotifyCollectionChangedAction.Remove:
@@ -103,12 +102,13 @@ public sealed class NonReloadingTabControl : TabControl
                     }
                 }
 
-                UpdateSelectedItem();
                 break;
 
             case NotifyCollectionChangedAction.Replace:
-                throw new NotImplementedException("Replace not implemented yet");
+                throw new NotImplementedException();
         }
+
+        UpdateSelectedItem();
     }
 
     protected override void OnSelectionChanged(SelectionChangedEventArgs e)

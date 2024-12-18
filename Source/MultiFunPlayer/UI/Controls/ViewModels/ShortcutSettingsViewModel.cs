@@ -1,5 +1,6 @@
 ﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI.Dialogs.ViewModels;
 using Newtonsoft.Json;
@@ -40,7 +41,7 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
     public IReadOnlyCollection<Type> ShortcutTypes { get; }
     public Type SelectedShortcutType { get; set; }
 
-    public ShortcutSettingsViewModel(IShortcutManager shortcutManager, IShortcutFactory shortcutFactory, IEventAggregator eventAggregator)
+    public ShortcutSettingsViewModel(IShortcutManager shortcutManager, IPropertyManager propertyManager, IShortcutFactory shortcutFactory, IEventAggregator eventAggregator)
     {
         DisplayName = "Shortcut";
         _shortcutManager = shortcutManager;
@@ -87,6 +88,7 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
         };
 
         RegisterActions(_shortcutManager);
+        RegisterProperties(propertyManager);
     }
 
     protected override void OnActivate() => _shortcutManager.HandleGestures = false;
@@ -213,7 +215,7 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
         if (sender is not FrameworkElement element || element.DataContext is not IShortcutActionConfiguration configuration)
             return;
 
-        _ = DialogHelper.ShowOnUIThreadAsync(new ShortcutActionConfigurationDialog(configuration), "SettingsDialog");
+        _ = DialogHelper.ShowAsync(new ShortcutActionConfigurationDialog(configuration), "SettingsDialog");
     }
 
     public void MoveAssignedActionDown(object sender, RoutedEventArgs e)
@@ -270,9 +272,8 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
         void UpdateSettings(string shortcutName, Action<IShortcut> callback)
         {
             var shortcut = Shortcuts.FirstOrDefault(x => string.Equals(x.Name, shortcutName, StringComparison.Ordinal));
-            if (shortcut == null)
-                return;
-            callback(shortcut);
+            if (shortcut != null)
+                callback(shortcut);
         }
 
         s.RegisterAction<string, bool>("Shortcut::Enabled::Set",
@@ -284,5 +285,18 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
             s => s.WithLabel("Target shortcut name"),
             shortcutName => UpdateSettings(shortcutName, s => s.Enabled = !s.Enabled));
         #endregion
+    }
+
+    private void RegisterProperties(IPropertyManager p)
+    {
+        TOut GetSettings<TOut>(string shortcutName, Func<IShortcut, TOut> callback)
+        {
+            var shortcut = Shortcuts.FirstOrDefault(x => string.Equals(x.Name, shortcutName, StringComparison.Ordinal));
+            if (shortcut != null)
+                return callback(shortcut);
+            return default;
+        }
+
+        p.RegisterProperty<string, bool>("Shortcut::Enabled", shortcutName => GetSettings(shortcutName, s => s.Enabled));
     }
 }

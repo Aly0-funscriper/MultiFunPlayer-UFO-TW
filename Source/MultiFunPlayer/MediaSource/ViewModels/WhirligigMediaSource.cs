@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json.Linq;
@@ -15,7 +16,8 @@ using System.Text.RegularExpressions;
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("Whirligig")]
-internal sealed class WhirligigMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class WhirligigMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     public override ConnectionStatus Status { get; protected set; }
     public bool IsConnected => Status == ConnectionStatus.Connected;
@@ -78,7 +80,10 @@ internal sealed class WhirligigMediaSource(IShortcutManager shortcutManager, IEv
                 if (message.Length >= 1 && message[0] == 'C')
                 {
                     var parts = message.Split(' ', 2);
-                    PublishMessage(new MediaPathChangedMessage(parts.Length == 2 && !string.IsNullOrWhiteSpace(parts[1]) ? parts[1].Trim('"') : null));
+                    if (parts.Length == 2 && !string.IsNullOrWhiteSpace(parts[1]))
+                        PublishMessage(new MediaPathChangedMessage(parts[1].Trim('"')));
+                    else
+                        PublishMessage(new MediaResetMessage());
                 }
                 else if (message.Length >= 1 && message[0] == 'S')
                 {
@@ -111,8 +116,7 @@ internal sealed class WhirligigMediaSource(IShortcutManager shortcutManager, IEv
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     public override void HandleSettings(JObject settings, SettingsAction action)
@@ -141,5 +145,11 @@ internal sealed class WhirligigMediaSource(IShortcutManager shortcutManager, IEv
                 Endpoint = endpoint;
         });
         #endregion
+    }
+
+    protected override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Name}::Endpoint", () => Endpoint);
     }
 }

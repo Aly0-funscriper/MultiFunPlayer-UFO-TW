@@ -1,12 +1,12 @@
 ﻿using Microsoft.Win32;
 using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json.Linq;
 using Stylet;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -16,7 +16,8 @@ using System.Windows.Interop;
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("PotPlayer")]
-internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     public override ConnectionStatus Status { get; protected set; }
     public bool IsConnected => Status == ConnectionStatus.Connected;
@@ -90,16 +91,15 @@ internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IEv
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(Process process, CancellationToken token)
     {
-        var playerState = new PlayerState();
-
         try
         {
+            var playerState = default(PlayerState);
+
             var hwndSource = default(HwndSource);
             await Execute.OnUIThreadAsync(() => hwndSource = PresentationSource.FromVisual(Application.Current.MainWindow) as HwndSource);
 
@@ -116,12 +116,13 @@ internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IEv
                 }
 
                 var path = await GetValueStringAsync(window, PlayerCommand.GetFilename, token);
-                if (path == null)
+                if (string.IsNullOrWhiteSpace(path))
                 {
                     ResetState();
                     continue;
                 }
 
+                playerState ??= new PlayerState();
                 var duration = GetValueLong(window, PlayerCommand.GetTotalTime);
                 var position = GetValueLong(window, PlayerCommand.GetCurrentTime);
 
@@ -152,19 +153,23 @@ internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IEv
 
             long GetValueLong(IntPtr hWnd, PlayerCommand command)
             {
+                const int WM_USER = 0x0400;
+
                 Logger.Trace("Reading \"{0}\" from {1}", command, Name);
-                return SendMessage(hWnd, 0x0400 /* WM_USER */, (UIntPtr)command, 0);
+                return SendMessage(hWnd, WM_USER, (UIntPtr)command, 0);
             }
 
             async Task<string> GetValueStringAsync(IntPtr hWnd, PlayerCommand command, CancellationToken token)
             {
+                const int WM_USER = 0x0400;
+
                 Logger.Trace("Reading \"{0}\" from {1}", command, Name);
                 var completionSource = new TaskCompletionSource<string>();
 
                 try
                 {
                     hwndSource.AddHook(MessageSink);
-                    SendMessage(hWnd, 0x0400 /* WM_USER */, (UIntPtr)command, hwndSource.Handle);
+                    SendMessage(hWnd, WM_USER, (UIntPtr)command, hwndSource.Handle);
 
                     await using var _ = token.Register(() => completionSource.SetCanceled(token));
                     return await completionSource.Task;
@@ -188,23 +193,24 @@ internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IEv
                     return IntPtr.Zero;
                 }
             }
+
+            void ResetState()
+            {
+                if (playerState == null)
+                    return;
+
+                PublishMessage(new MediaResetMessage());
+                playerState = null;
+            }
         }
         catch (OperationCanceledException) { }
-
-        void ResetState()
-        {
-            if (playerState.Path == null)
-                return;
-
-            playerState = new PlayerState();
-
-            PublishMessage(new MediaPathChangedMessage(null));
-            PublishMessage(new MediaPlayingChangedMessage(false));
-        }
     }
 
     private async Task WriteAsync(Process process, CancellationToken token)
     {
+        const int WM_USER = 0x0400;
+        const int WM_COPYDATA = 0x004a;
+
         try
         {
             var window = process.MainWindowHandle;
@@ -226,7 +232,7 @@ internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IEv
         void SetValueLong(IntPtr hWnd, PlayerCommand command, long value)
         {
             Logger.Debug("Writing \"{0}({1})\" to {2}", command, value, Name);
-            SendMessage(hWnd, 0x0400 /* WM_USER */, (UIntPtr)command, checked((IntPtr)value));
+            SendMessage(hWnd, WM_USER, (UIntPtr)command, checked((IntPtr)value));
         }
 
         void SetValueString(IntPtr hWnd, PlayerCommand command, string value, Encoding encoding)
@@ -239,22 +245,22 @@ internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IEv
             try
             {
                 var managedBytes = encoding.GetBytes(value ?? string.Empty);
+                var byteCount = managedBytes.Length;
 
-                unmanagedBytes = Marshal.AllocCoTaskMem(managedBytes.Length + 1);
-                Marshal.Copy(managedBytes, 0, unmanagedBytes, managedBytes.Length);
-                Marshal.WriteByte(unmanagedBytes, managedBytes.Length, 0);
+                unmanagedBytes = Marshal.AllocCoTaskMem(byteCount);
+                Marshal.Copy(managedBytes, 0, unmanagedBytes, byteCount);
 
                 var managedData = new COPYDATASTRUCT
                 {
                     dwData = (IntPtr)command,
                     lpData = unmanagedBytes,
-                    cbData = managedBytes.Length + 1
+                    cbData = byteCount
                 };
 
                 unmanagedData = Marshal.AllocCoTaskMem(Marshal.SizeOf<COPYDATASTRUCT>());
                 Marshal.StructureToPtr(managedData, unmanagedData, false);
 
-                SendMessage(hWnd, 0x004a /* WM_COPYDATA */, UIntPtr.Zero, unmanagedData);
+                SendMessage(hWnd, WM_COPYDATA, UIntPtr.Zero, unmanagedData);
             }
             finally
             {

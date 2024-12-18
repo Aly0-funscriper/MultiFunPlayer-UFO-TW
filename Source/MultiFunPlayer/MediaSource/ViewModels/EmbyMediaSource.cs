@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json;
@@ -11,7 +12,8 @@ using System.Net.Http;
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("Emby")]
-internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     private CancellationTokenSource _refreshCancellationSource = new();
     private EmbySession _currentSession;
@@ -41,7 +43,8 @@ internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IEventAg
     protected override void OnInitialActivate()
     {
         base.OnInitialActivate();
-        _ = RefreshDevices();
+        if (Status == ConnectionStatus.Disconnected)
+            _ = RefreshDevices();
     }
 
     protected override async ValueTask<bool> OnConnectingAsync(ConnectionType connectionType)
@@ -68,7 +71,8 @@ internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IEventAg
 
         try
         {
-            client.Timeout = TimeSpan.FromMilliseconds(1000);
+            if (connectionType == ConnectionType.AutoConnect)
+                client.Timeout = TimeSpan.FromMilliseconds(500);
 
             var uri = new Uri(ServerBaseUri, "/System/Ping");
             var response = await client.GetAsync(uri, token);
@@ -105,8 +109,7 @@ internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IEventAg
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(HttpClient client, CancellationToken token)
@@ -141,11 +144,10 @@ internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IEventAg
                 var state = _currentSession?.State;
                 var item = _currentSession?.Item;
 
+                if (item != null && item.Path == null)
+                    item = null;
                 if (item == null && lastItem != null)
-                {
-                    PublishMessage(new MediaPathChangedMessage(null));
-                    PublishMessage(new MediaPlayingChangedMessage(false));
-                }
+                    PublishMessage(new MediaResetMessage());
 
                 if (item?.Path != null)
                 {
@@ -212,7 +214,7 @@ internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IEventAg
     public bool CanRefreshDevices => !IsRefreshBusy && IsDisconnected && ServerBaseUri != null && !string.IsNullOrEmpty(ApiKey);
     public bool IsRefreshBusy { get; set; }
 
-    private int _isRefreshingFlag;
+    private bool _isRefreshingFlag;
     public async Task RefreshDevices()
     {
         if (ServerBaseUri == null)
@@ -220,7 +222,7 @@ internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IEventAg
         if (string.IsNullOrEmpty(ApiKey))
             return;
 
-        if (Interlocked.CompareExchange(ref _isRefreshingFlag, 1, 0) != 0)
+        if (Interlocked.CompareExchange(ref _isRefreshingFlag, true, false))
             return;
 
         try
@@ -237,7 +239,7 @@ internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IEventAg
         }
         finally
         {
-            Interlocked.Decrement(ref _isRefreshingFlag);
+            Interlocked.Exchange(ref _isRefreshingFlag, false);
             IsRefreshBusy = false;
         }
 
@@ -247,7 +249,6 @@ internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IEventAg
             Logger.Debug("Refreshing devices");
 
             using var client = NetUtils.CreateHttpClient();
-            client.Timeout = TimeSpan.FromMilliseconds(5000);
 
             var uri = new Uri(ServerBaseUri, $"/Devices?api_key={ApiKey}");
             var response = await client.GetAsync(uri, token);
@@ -353,6 +354,12 @@ internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IEventAg
         #region RefreshDevices
         s.RegisterAction($"{Name}::RefreshDevices", async () => { if (CanRefreshDevices) await RefreshDevices(); });
         #endregion
+    }
+
+    protected override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Name}::ServerBaseUri", () => ServerBaseUri);
     }
 
     protected override void Dispose(bool disposing)

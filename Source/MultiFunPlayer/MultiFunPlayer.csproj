@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net9.0-windows</TargetFramework>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <UseWPF>true</UseWPF>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
@@ -11,6 +11,7 @@
     <ApplicationIcon>..\..\Assets\icon.ico</ApplicationIcon>
     <SelfContained>false</SelfContained>
     <ImplicitUsings>true</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -48,8 +49,8 @@
     </PackageReference>
     <PackageReference Include="RawInput.Sharp" Version="0.1.3" />
     <PackageReference Include="Stylet" Version="1.*" />
-    <PackageReference Include="System.IO.Ports" Version="8.*" />
-    <PackageReference Include="System.Management" Version="8.*" />
-    <PackageReference Include="Vortice.XInput" Version="3.5.0" />
+    <PackageReference Include="System.IO.Ports" Version="9.*" />
+    <PackageReference Include="System.Management" Version="9.*" />
+    <PackageReference Include="Vortice.XInput" Version="3.*" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,4 @@
-using MaterialDesignThemes.Wpf;
+﻿using MaterialDesignThemes.Wpf;
 using Microsoft.Win32;
 using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
@@ -77,6 +77,8 @@ internal sealed class Bootstrapper : Bootstrapper<RootViewModel>
         builder.Bind<TCodeInputProcessor>().ToSelf();
 
         builder.Bind<IStyletLoggerManager>().To<StyletLoggerManager>().InSingletonScope();
+        builder.Bind<INewtonsoftJsonLoggerManager>().To<NewtonsoftJsonLoggerManager>().InSingletonScope();
+
         builder.Bind<IOutputTargetFactory>().To<OutputTargetFactory>().InSingletonScope();
         builder.Bind<IShortcutManager>().And<IShortcutActionResolver>().To<ShortcutManager>().InSingletonScope();
         builder.Bind<IShortcutActionRunner>().To<ShortcutActionRunner>().InSingletonScope();
@@ -84,6 +86,7 @@ internal sealed class Bootstrapper : Bootstrapper<RootViewModel>
         builder.Bind<IPropertyManager>().To<PropertyManager>().InSingletonScope();
         builder.Bind<IMotionProviderFactory>().To<MotionProviderFactory>().InSingletonScope();
         builder.Bind<IMotionProviderManager>().To<MotionProviderManager>().InSingletonScope();
+        builder.Bind<IPluginManager>().To<PluginManager>().InSingletonScope();
 
         foreach (var type in ReflectionUtils.FindImplementations<IScriptRepository>())
         {
@@ -254,11 +257,13 @@ internal sealed class Bootstrapper : Bootstrapper<RootViewModel>
     {
         var logger = LogManager.GetLogger(nameof(JsonConvert));
         var converterFactory = Container.Get<Func<IEnumerable<JsonConverter>>>();
+        var loggerManager = Container.Get<INewtonsoftJsonLoggerManager>();
         JsonConvert.DefaultSettings = () =>
         {
             var settings = new JsonSerializerSettings
             {
-                Formatting = Formatting.Indented
+                Formatting = Formatting.Indented,
+                TraceWriter = loggerManager.GetLogger()
             };
 
             settings.Converters.Add(new StringEnumConverter());
@@ -355,6 +360,13 @@ internal sealed class Bootstrapper : Bootstrapper<RootViewModel>
         }
 
         LogManager.ReconfigExistingLoggers();
+
+        if (settings.TryGetValue<bool>("EnableJsonLogging", out var enableJsonLogging))
+        {
+            var loggerManager = Container.Get<INewtonsoftJsonLoggerManager>();
+            loggerManager.IsEnabled = enableJsonLogging;
+        }
+
         return dirty;
     }
 }

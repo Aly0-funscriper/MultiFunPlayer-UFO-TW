@@ -138,11 +138,7 @@ internal sealed class ShortcutActionRunner : IShortcutActionRunner, IDisposable
     {
         public abstract void Invoke(IShortcutActionResolver actionResolver);
 
-        protected void Wait(in ValueTask task)
-        {
-            if (!task.IsCompleted)
-                task.AsTask().GetAwaiter().GetResult();
-        }
+        protected void Wait(in ValueTask task) => task.Preserve().GetAwaiter().GetResult();
     }
 
     private sealed record GestureInvokableItem(IEnumerable<IShortcutActionConfiguration> Configurations, IInputGestureData GestureData) : AbstractInvokableItem

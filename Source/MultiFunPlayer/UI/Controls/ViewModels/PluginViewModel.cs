@@ -1,110 +1,122 @@
 ﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Plugin;
-using MultiFunPlayer.Shortcut;
+using PropertyChanged;
 using Stylet;
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Diagnostics;
 
 namespace MultiFunPlayer.UI.Controls.ViewModels;
 
-internal sealed class PluginViewModel : Screen, IHandle<SettingsMessage>, IDisposable
+internal sealed class PluginViewModel : Conductor<PluginContainer>.Collection.OneActive
 {
-    private readonly IShortcutManager _shortcutManager;
-    private FileSystemWatcher _watcher;
+    private readonly IReadOnlyObservableConcurrentCollection<PluginContainer> _source;
 
-    public ObservableConcurrentDictionary<FileInfo, PluginContainer> Containers { get; }
+    public bool ContentVisible { get; set; }
 
-    public PluginViewModel(IEventAggregator eventAggregator,  IShortcutManager shortcutManager)
+    public PluginViewModel(IPluginManager pluginManager)
     {
-        eventAggregator.Subscribe(this);
+        _source = pluginManager.Containers;
+        _source.CollectionChanged += OnSourceCollectionChanged;
 
-        _shortcutManager = shortcutManager;
+        OnSourceCollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+    }
 
-        Directory.CreateDirectory("Plugins");
+    [SuppressPropertyChangedWarnings]
+    private void OnSourceCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems?.Count > 1 || e.NewItems?.Count > 1)
+            throw new NotSupportedException();
 
-        Containers = new ObservableConcurrentDictionary<FileInfo, PluginContainer>(new FileInfoFullNameComparer());
-        _watcher = new FileSystemWatcher()
+        var oldItem = e.OldItems?.Cast<PluginContainer>().FirstOrDefault();
+        var newItem = e.NewItems?.Cast<PluginContainer>().FirstOrDefault();
+        var newIndex = MapIndex(e.NewStartingIndex);
+
+        switch (e.Action)
         {
-            Filter = "*.cs",
-            Path = Path.Join(Directory.GetCurrentDirectory(), "Plugins"),
-            EnableRaisingEvents = true
-        };
+            case NotifyCollectionChangedAction.Add:
+                AddItem(newItem, newIndex);
+                break;
+            case NotifyCollectionChangedAction.Remove:
+                RemoveItem(oldItem);
+                break;
+            case NotifyCollectionChangedAction.Replace:
+                RemoveItem(oldItem);
+                AddItem(newItem, newIndex == -1 ? MapIndex(_source.IndexOf(newItem)) : newIndex);
+                break;
+            case NotifyCollectionChangedAction.Move:
+                RemoveItem(oldItem);
+                AddItem(newItem, newIndex);
+                break;
+            case NotifyCollectionChangedAction.Reset:
+                foreach(var item in Items)
+                    RemoveItem(item);
+                if (Items.Count != 0)
+                    throw new UnreachableException();
 
-        _watcher.Created += OnWatcherCreated;
-        _watcher.Renamed += OnWatcherRenamed;
-        _watcher.Deleted += OnWatcherDeleted;
-
-        foreach (var fileInfo in new DirectoryInfo("Plugins").SafeEnumerateFileSystemInfos("*.cs"))
-            AddContainer(new FileInfo(fileInfo.FullName));
+                foreach(var item in _source)
+                    AddItem(item, -1);
+                break;
+        }
     }
 
-    private void OnWatcherRenamed(object sender, RenamedEventArgs e)
+    private void AddItem(PluginContainer item, int index)
     {
-        RemoveContainer(new FileInfo(e.OldFullPath));
-        AddContainer(new FileInfo(e.FullPath));
+        item.PropertyChanged -= OnContainerPropertyChanged;
+        item.PropertyChanged += OnContainerPropertyChanged;
+
+        if (item.View != null)
+            AddItemUnchecked(item, index);
     }
 
-    private void OnWatcherDeleted(object sender, FileSystemEventArgs e) => RemoveContainer(new FileInfo(e.FullPath));
-    private void OnWatcherCreated(object sender, FileSystemEventArgs e) => AddContainer(new FileInfo(e.FullPath));
-
-    private void RemoveContainer(FileInfo fileInfo)
+    private void AddItemUnchecked(PluginContainer item, int index)
     {
-        if (!Containers.TryGetValue(fileInfo, out var container))
-            return;
+        if (index == -1)
+            Items.Add(item);
+        else
+            Items.Insert(index++, item);
 
-        container.Dispose();
-        Containers.Remove(fileInfo);
-
-        container.UnregisterActions(_shortcutManager);
+        if (ActiveItem == null)
+            ActivateItem(item);
     }
 
-    private void AddContainer(FileInfo fileInfo)
+    private void RemoveItem(PluginContainer item)
     {
-        if (!fileInfo.AsRefreshed().Exists)
-            return;
-
-        if (fileInfo.Extension != ".cs")
-            return;
-
-        if (Containers.ContainsKey(fileInfo))
-            return;
-
-        var container = new PluginContainer(fileInfo);
-        Containers.Add(fileInfo, container);
-        container.Compile();
-
-        container.RegisterActions(_shortcutManager);
+        item.PropertyChanged -= OnContainerPropertyChanged;
+        if (item.View != null)
+            RemoveItemUnchecked(item);
     }
 
-    public void Handle(SettingsMessage message)
+    private void RemoveItemUnchecked(PluginContainer item)
     {
-        if (message.Action == SettingsAction.Loading)
-            return;
-
-        foreach (var (_, container) in Containers)
-            container.HandleSettings(message.Action);
+        CloseItem(item);
     }
 
-    private void Dispose(bool disposing)
+    private int MapIndex(int index)
     {
-        _watcher?.Dispose();
-        _watcher = null;
+        if (index == -1)
+            return -1;
 
-        foreach (var (_, container) in Containers)
-            container.Dispose();
+        while (--index >= 0)
+        {
+            var ourIndex = Items.IndexOf(_source[index]);
+            if (ourIndex >= 0)
+                return ourIndex + 1;
+        }
 
-        Containers.Clear();
+        return 0;
     }
 
-    public void Dispose()
+    [SuppressPropertyChangedWarnings]
+    private void OnContainerPropertyChanged(object sender, PropertyChangedEventArgs e)
     {
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
-    }
-
-    private sealed class FileInfoFullNameComparer : IEqualityComparer<FileInfo>
-    {
-        public bool Equals(FileInfo x, FileInfo y) => EqualityComparer<string>.Default.Equals(x?.FullName, y?.FullName);
-        public int GetHashCode([DisallowNull] FileInfo obj) => HashCode.Combine(obj.FullName);
+        if (e.PropertyName == nameof(PluginContainer.View))
+        {
+            var container = (PluginContainer)sender;
+            if (container.View == null)
+                RemoveItemUnchecked(container);
+            else
+                AddItemUnchecked(container, MapIndex(_source.IndexOf(container)));
+        }
     }
 }

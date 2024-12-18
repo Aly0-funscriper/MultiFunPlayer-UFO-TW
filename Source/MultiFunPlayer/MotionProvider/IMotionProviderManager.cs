@@ -1,6 +1,6 @@
 ﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.MotionProvider.ViewModels;
-using MultiFunPlayer.Settings;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using Newtonsoft.Json.Linq;
 using NLog;
@@ -18,6 +18,7 @@ internal interface IMotionProviderManager
     double GetValue(DeviceAxis axis);
     void Update(DeviceAxis axis, string motionProviderName, double deltaTime);
     void RegisterActions(IShortcutManager shortcutManager);
+    void RegisterProperties(IPropertyManager propertyManager);
 }
 
 internal sealed class MotionProviderManager : IMotionProviderManager, IHandle<SettingsMessage>
@@ -105,5 +106,13 @@ internal sealed class MotionProviderManager : IMotionProviderManager, IHandle<Se
         LoopingScriptMotionProvider.RegisterActions(s, GetMotionProvider<LoopingScriptMotionProvider>);
         PatternMotionProvider.RegisterActions(s, GetMotionProvider<PatternMotionProvider>);
         RandomMotionProvider.RegisterActions(s, GetMotionProvider<RandomMotionProvider>);
+    }
+
+    public void RegisterProperties(IPropertyManager p)
+    {
+        CustomCurveMotionProvider.RegisterProperties(p, GetMotionProvider<CustomCurveMotionProvider>);
+        LoopingScriptMotionProvider.RegisterProperties(p, GetMotionProvider<LoopingScriptMotionProvider>);
+        PatternMotionProvider.RegisterProperties(p, GetMotionProvider<PatternMotionProvider>);
+        RandomMotionProvider.RegisterProperties(p, GetMotionProvider<RandomMotionProvider>);
     }
 }

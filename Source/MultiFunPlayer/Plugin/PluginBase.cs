@@ -2,48 +2,41 @@
 using MultiFunPlayer.Input;
 using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
-using NLog;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using PropertyChanged;
 using Stylet;
 using StyletIoC;
-using System.Collections.Frozen;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Windows;
 
 namespace MultiFunPlayer.Plugin;
 
-public abstract class PluginBase : PropertyChangedBase
+[JsonObject(MemberSerialization = MemberSerialization.OptIn)]
+public abstract class PluginBase : Screen
 {
     private readonly MessageProxy _messageProxy;
-    private readonly FrozenDictionary<Type, bool> _asyncHandlerOverrides;
+    [DoNotNotify] protected internal CancellationTokenSource CancellationSource { get; }
 
-    internal CancellationTokenSource InternalCancellationSource;
-    internal event EventHandler<Exception> OnInternalException;
+    [Inject][DoNotNotify] internal IEventAggregator EventAggregator { get; set; }
+    [Inject][DoNotNotify] internal IShortcutManager ShortcutManager { get; set; }
+    [Inject][DoNotNotify] internal IShortcutActionRunner ShortcutActionRunner { get; set; }
+    [Inject][DoNotNotify] internal IPropertyManager PropertyManager { get; set; }
 
-    [Inject] internal IDeviceAxisValueProvider DeviceAxisValueProvider { get; set; }
-    [Inject] internal IEventAggregator EventAggregator { get; set; }
-    [Inject] internal IShortcutManager ShortcutManager { get; set; }
-    [Inject] internal IShortcutActionRunner ShortcutActionRunner { get; set; }
-    [Inject] internal IPropertyManager PropertyManager { get; set; }
-
-    protected Logger Logger { get; }
+    protected CancellationToken CancellationToken => CancellationSource.Token;
 
     protected PluginBase()
     {
+        DisplayName = GetType().GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? GetType().Name;
         _messageProxy = new(HandleMessageInternal);
-        Logger = LogManager.GetLogger(GetType().FullName);
-
-        _asyncHandlerOverrides = GetType().GetMethods(BindingFlags.Instance | BindingFlags.NonPublic)
-                                          .Where(m => m.Name == nameof(HandleMessageAsync))
-                                          .ToFrozenDictionary(m => m.GetParameters()[0].ParameterType,
-                                                              m => m.GetBaseDefinition().DeclaringType != m.DeclaringType);
+        CancellationSource = new CancellationTokenSource();
     }
 
-    #region DeviceAxis
-    protected double GetAxisValue(DeviceAxis axis)
-        => DeviceAxisValueProvider.GetValue(axis);
-    #endregion
-
     #region Shortcut
+    [DoNotNotify] protected IReadOnlyObservableConcurrentCollection<string> AvailableActions
+        => ShortcutManager.AvailableActions;
 
     protected void InvokeAction(string actionName, bool invokeDirectly = false)
         => ShortcutActionRunner.Invoke(actionName, invokeDirectly);
@@ -123,6 +116,7 @@ public abstract class PluginBase : PropertyChangedBase
     #endregion
 
     #region Property
+    [DoNotNotify] protected IReadOnlyObservableConcurrentCollection<string> AvailableProperties => PropertyManager.AvailableProperties;
     protected TOut ReadProperty<TOut>(string propertyName, params object[] arguments) => PropertyManager.GetValue<TOut>(propertyName, arguments);
     protected TOut ReadProperty<TOut>(string propertyName) => PropertyManager.GetValue<TOut>(propertyName);
     protected TOut ReadProperty<T0, TOut>(string propertyName, T0 arg0) => PropertyManager.GetValue<T0, TOut>(propertyName, arg0);
@@ -135,38 +129,44 @@ public abstract class PluginBase : PropertyChangedBase
     protected void PublishMessage(MediaPlayingChangedMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaPathChangedMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaDurationChangedMessage message) => EventAggregator.Publish(message);
+    protected void PublishMessage(MediaResetMessage message) => EventAggregator.Publish(message);
+    protected void PublishMessage(ChangeScriptMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaSeekMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaPlayPauseMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaChangePathMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(MediaChangeSpeedMessage message) => EventAggregator.Publish(message);
-    protected void PublishMessage(ChangeScriptMessage message) => EventAggregator.Publish(message);
     protected void PublishMessage(SyncRequestMessage message) => EventAggregator.Publish(message);
+    protected void PublishMessage(ReloadScriptsRequestMessage message) => EventAggregator.Publish(message);
 
     protected virtual void HandleMessage(MediaSpeedChangedMessage message) { }
     protected virtual void HandleMessage(MediaPositionChangedMessage message) { }
-    protected virtual void HandleMessage(MediaPlayPauseMessage message) { }
+    protected virtual void HandleMessage(MediaPlayingChangedMessage message) { }
     protected virtual void HandleMessage(MediaPathChangedMessage message) { }
     protected virtual void HandleMessage(MediaDurationChangedMessage message) { }
+    protected virtual void HandleMessage(MediaResetMessage message) { }
+    protected virtual void HandleMessage(PreScriptSearchMessage message) { }
+    protected virtual void HandleMessage(PostScriptSearchMessage message) { }
+    protected virtual void HandleMessage(ScriptChangedMessage message) { }
     protected virtual void HandleMessage(MediaSeekMessage message) { }
-    protected virtual void HandleMessage(MediaPlayingChangedMessage message) { }
+    protected virtual void HandleMessage(MediaPlayPauseMessage message) { }
     protected virtual void HandleMessage(MediaChangePathMessage message) { }
     protected virtual void HandleMessage(MediaChangeSpeedMessage message) { }
-    protected virtual void HandleMessage(ScriptChangedMessage message) { }
     protected virtual void HandleMessage(SyncRequestMessage message) { }
-    protected virtual void HandleMessage(PostScriptSearchMessage message) { }
 
-    protected virtual Task HandleMessageAsync(MediaSpeedChangedMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaPositionChangedMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaPlayPauseMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaPathChangedMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaDurationChangedMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaSeekMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaPlayingChangedMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaChangePathMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(MediaChangeSpeedMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(ScriptChangedMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(SyncRequestMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task HandleMessageAsync(PostScriptSearchMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaSpeedChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaPositionChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaPlayingChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaPathChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaDurationChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaResetMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(PreScriptSearchMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(PostScriptSearchMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(ScriptChangedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaSeekMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaPlayPauseMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaChangePathMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(MediaChangeSpeedMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    protected virtual ValueTask HandleMessageAsync(SyncRequestMessage message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
 
     private void HandleMessageInternal(object e)
     {
@@ -185,38 +185,38 @@ public abstract class PluginBase : PropertyChangedBase
             else if (e is SyncRequestMessage syncRequestMessage) HandleMessage(syncRequestMessage);
             else if (e is PostScriptSearchMessage postScriptSearchMessage) HandleMessage(postScriptSearchMessage);
         }
-        catch (Exception exception)
-        {
-            OnInternalException?.Invoke(this, exception);
-        }
+        catch { }
 
-        if (_asyncHandlerOverrides.TryGetValue(e.GetType(), out var overridden) && overridden)
+        var cancellationSource = CancellationSource;
+        if (cancellationSource == null)
+            return;
+        if (cancellationSource.IsCancellationRequested)
+            return;
+
+        var token = cancellationSource.Token;
+        try
         {
-            var token = InternalCancellationSource.Token;
-            _ = Task.Run(async () =>
+            var valueTask = e switch
             {
-                try
-                {
-                    if (e is MediaSpeedChangedMessage mediaSpeedChangedMessage) await HandleMessageAsync(mediaSpeedChangedMessage, token);
-                    else if (e is MediaPositionChangedMessage mediaPositionChangedMessage) await HandleMessageAsync(mediaPositionChangedMessage, token);
-                    else if (e is MediaPlayingChangedMessage mediaPlayingChangedMessage) await HandleMessageAsync(mediaPlayingChangedMessage, token);
-                    else if (e is MediaPathChangedMessage mediaPathChangedMessage) await HandleMessageAsync(mediaPathChangedMessage, token);
-                    else if (e is MediaDurationChangedMessage mediaDurationChangedMessage) await HandleMessageAsync(mediaDurationChangedMessage, token);
-                    else if (e is MediaSeekMessage mediaSeekMessage) await HandleMessageAsync(mediaSeekMessage, token);
-                    else if (e is MediaPlayPauseMessage mediaPlayPauseMessage) await HandleMessageAsync(mediaPlayPauseMessage, token);
-                    else if (e is MediaChangePathMessage mediaChangePathMessage) await HandleMessageAsync(mediaChangePathMessage, token);
-                    else if (e is MediaChangeSpeedMessage mediaChangeSpeedMessage) await HandleMessageAsync(mediaChangeSpeedMessage, token);
-                    else if (e is ScriptChangedMessage scriptChangedMessage) await HandleMessageAsync(scriptChangedMessage, token);
-                    else if (e is SyncRequestMessage syncRequestMessage) await HandleMessageAsync(syncRequestMessage, token);
-                    else if (e is PostScriptSearchMessage postScriptSearchMessage) await HandleMessageAsync(postScriptSearchMessage, token);
-                }
-                catch (OperationCanceledException) { }
-                catch (Exception exception)
-                {
-                    OnInternalException?.Invoke(this, exception);
-                }
-            });
+                MediaSpeedChangedMessage mediaSpeedChangedMessage => HandleMessageAsync(mediaSpeedChangedMessage, token),
+                MediaPositionChangedMessage mediaPositionChangedMessage => HandleMessageAsync(mediaPositionChangedMessage, token),
+                MediaPlayingChangedMessage mediaPlayingChangedMessage => HandleMessageAsync(mediaPlayingChangedMessage, token),
+                MediaPathChangedMessage mediaPathChangedMessage => HandleMessageAsync(mediaPathChangedMessage, token),
+                MediaDurationChangedMessage mediaDurationChangedMessage => HandleMessageAsync(mediaDurationChangedMessage, token),
+                MediaSeekMessage mediaSeekMessage => HandleMessageAsync(mediaSeekMessage, token),
+                MediaPlayPauseMessage mediaPlayPauseMessage => HandleMessageAsync(mediaPlayPauseMessage, token),
+                MediaChangePathMessage mediaChangePathMessage => HandleMessageAsync(mediaChangePathMessage, token),
+                MediaChangeSpeedMessage mediaChangeSpeedMessage => HandleMessageAsync(mediaChangeSpeedMessage, token),
+                ScriptChangedMessage scriptChangedMessage => HandleMessageAsync(scriptChangedMessage, token),
+                SyncRequestMessage syncRequestMessage => HandleMessageAsync(syncRequestMessage, token),
+                PostScriptSearchMessage postScriptSearchMessage => HandleMessageAsync(postScriptSearchMessage, token),
+                _ => ValueTask.CompletedTask
+            };
+
+            valueTask.Preserve().GetAwaiter().GetResult();
         }
+        catch (OperationCanceledException) { }
+        catch { }
     }
 
     private sealed class MessageProxy(Action<object> callback) : IHandle<object>
@@ -225,89 +225,35 @@ public abstract class PluginBase : PropertyChangedBase
     }
     #endregion
 
-    internal void InternalInitialize(CancellationToken cancellationToken)
+    public virtual UIElement CreateView() => null;
+
+    protected virtual void OnInitialize() { }
+
+    internal void InternalInitialize()
     {
-        InternalCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         EventAggregator.Subscribe(_messageProxy);
+        OnInitialize();
     }
 
-    protected virtual void Dispose(bool disposing) { }
+    protected virtual void OnDispose() { }
 
     [SuppressMessage("Usage", "CA1816:Dispose methods should call SuppressFinalize", Justification = "Internal dispose")]
     internal void InternalDispose()
     {
         EventAggregator.Unsubscribe(_messageProxy);
 
-        InternalCancellationSource?.Cancel();
-        InternalCancellationSource?.Dispose();
-        InternalCancellationSource = null;
+        CancellationSource.Cancel();
+        CancellationSource.Dispose();
 
-        Dispose(disposing: true);
+        OnDispose();
         GC.SuppressFinalize(this);
     }
-}
 
-public abstract class SyncPluginBase : PluginBase
-{
-    protected virtual void Execute(CancellationToken cancellationToken)
+    public virtual void HandleSettings(JObject settings, SettingsAction action)
     {
-        try { cancellationToken.WaitHandle.WaitOne(); }
-        catch { }
-
-        throw new OperationCanceledException();
-    }
-
-    internal void InternalExecute()
-    {
-        var internalException = default(Exception);
-        void HandleInternalException(object _, Exception e)
-        {
-            if (Interlocked.CompareExchange(ref internalException, e, null) == null)
-                InternalCancellationSource.Cancel();
-        }
-
-        try
-        {
-            OnInternalException += HandleInternalException;
-            Execute(InternalCancellationSource.Token);
-        }
-        catch (OperationCanceledException) when (internalException != null) { internalException.Throw(); }
-        catch (Exception e) when (internalException != null) { throw new AggregateException(internalException, e); }
-        finally { OnInternalException -= HandleInternalException; }
-    }
-}
-
-public abstract class AsyncPluginBase : PluginBase
-{
-    protected virtual async Task ExecuteAsync(CancellationToken cancellationToken)
-    {
-        if (cancellationToken.IsCancellationRequested)
-        {
-            await Task.FromCanceled(cancellationToken);
-            return;
-        }
-
-        var taskCompletionSource = new TaskCompletionSource();
-        await using var registration = cancellationToken.Register(() => taskCompletionSource.TrySetCanceled(cancellationToken), useSynchronizationContext: false);
-        await taskCompletionSource.Task;
-    }
-
-    internal async Task InternalExecuteAsync()
-    {
-        var internalException = default(Exception);
-        void HandleInternalException(object _, Exception e)
-        {
-            if (Interlocked.CompareExchange(ref internalException, e, null) == null)
-                InternalCancellationSource.Cancel();
-        }
-
-        try
-        {
-            OnInternalException += HandleInternalException;
-            await ExecuteAsync(InternalCancellationSource.Token);
-        }
-        catch (OperationCanceledException) when (internalException != null) { internalException.Throw(); }
-        catch (Exception e) when (internalException != null) { throw new AggregateException(internalException, e); }
-        finally { OnInternalException -= HandleInternalException; }
+        if (action == SettingsAction.Saving)
+            settings.MergeAll(JObject.FromObject(this));
+        else if (action == SettingsAction.Loading)
+            settings.Populate(this);
     }
 }

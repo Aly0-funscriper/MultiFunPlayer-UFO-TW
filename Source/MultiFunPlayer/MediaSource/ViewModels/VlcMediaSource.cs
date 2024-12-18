@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json.Linq;
@@ -14,7 +15,8 @@ using System.Text;
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("VLC")]
-internal sealed class VlcMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class VlcMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     public override ConnectionStatus Status { get; protected set; }
     public bool IsConnected => Status == ConnectionStatus.Connected;
@@ -43,7 +45,9 @@ internal sealed class VlcMediaSource(IShortcutManager shortcutManager, IEventAgg
 
         try
         {
-            client.Timeout = TimeSpan.FromMilliseconds(500);
+            if (connectionType == ConnectionType.AutoConnect)
+                client.Timeout = TimeSpan.FromMilliseconds(500);
+
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($":{Password}")));
 
             var uri = new Uri($"http://{Endpoint.ToUriString()}/requests/status.json");
@@ -93,18 +97,17 @@ internal sealed class VlcMediaSource(IShortcutManager shortcutManager, IEventAgg
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(HttpClient client, int version, CancellationToken token)
     {
-        var statusUri = new Uri($"http://{Endpoint.ToUriString()}/requests/status.json");
-        var playlistUri = new Uri($"http://{Endpoint.ToUriString()}/requests/playlist.json");
-        var playerState = new PlayerState();
-
         try
         {
+            var statusUri = new Uri($"http://{Endpoint.ToUriString()}/requests/status.json");
+            var playlistUri = new Uri($"http://{Endpoint.ToUriString()}/requests/playlist.json");
+            var playerState = default(PlayerState);
+
             using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(200));
             while (await timer.WaitForNextTickAsync(token) && !token.IsCancellationRequested)
             {
@@ -116,10 +119,8 @@ internal sealed class VlcMediaSource(IShortcutManager shortcutManager, IEventAgg
                 Logger.Trace("Received \"{0}\" from \"{1}\"", statusMessage, Name);
                 var statusDocument = JObject.Parse(statusMessage);
 
-                if (!statusDocument.TryGetValue<int>("currentplid", out var playlistId))
-                    continue;
-
-                bool ShouldResetState() => version switch
+                var hasPlaylistId = statusDocument.TryGetValue<int>("currentplid", out var playlistId);
+                bool ShouldResetState() => !hasPlaylistId || version switch
                 {
                     3 when playlistId < 0 => true,
                     4 when statusDocument.TryGetValue<string>("state", out var state) && string.Equals(state, "stopped", StringComparison.OrdinalIgnoreCase) => true,
@@ -132,6 +133,8 @@ internal sealed class VlcMediaSource(IShortcutManager shortcutManager, IEventAgg
                     ResetState();
                     continue;
                 }
+
+                playerState ??= new PlayerState();
 
                 var playlistIdChanged = playlistId != playerState.PlaylistId;
                 if (playlistIdChanged)
@@ -204,20 +207,18 @@ internal sealed class VlcMediaSource(IShortcutManager shortcutManager, IEventAgg
                     playerState.Position = position;
                 }
             }
+
+            void ResetState()
+            {
+                if (playerState == null)
+                    return;
+
+                PublishMessage(new MediaResetMessage());
+                playerState = null;
+            }
         }
         catch (OperationCanceledException e) when (e.InnerException is TimeoutException t) { t.Throw(); }
         catch (OperationCanceledException) { }
-
-        void ResetState()
-        {
-            if (playerState.PlaylistId == null)
-                return;
-
-            playerState = new PlayerState();
-
-            PublishMessage(new MediaPathChangedMessage(null));
-            PublishMessage(new MediaPlayingChangedMessage(false));
-        }
     }
 
     private async Task WriteAsync(HttpClient client, int version, CancellationToken token)
@@ -286,6 +287,12 @@ internal sealed class VlcMediaSource(IShortcutManager shortcutManager, IEventAgg
                 Endpoint = endpoint;
         });
         #endregion
+    }
+
+    protected override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Name}::Endpoint", () => Endpoint);
     }
 
     private sealed class PlayerState

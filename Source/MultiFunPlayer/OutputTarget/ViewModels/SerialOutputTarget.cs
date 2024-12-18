@@ -2,6 +2,7 @@
 using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
 using MultiFunPlayer.Input.TCode;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json.Linq;
@@ -58,17 +59,18 @@ internal sealed class SerialOutputTarget(int instanceIndex, IEventAggregator eve
     protected override void OnInitialActivate()
     {
         base.OnInitialActivate();
-        _ = RefreshPorts();
+        if (Status == ConnectionStatus.Disconnected)
+            _ = RefreshPorts();
     }
 
     public bool CanChangePort => !IsRefreshBusy && !IsConnectBusy && !IsConnected;
     public bool IsRefreshBusy { get; set; }
     public bool CanRefreshPorts => !IsRefreshBusy && !IsConnectBusy && !IsConnected;
 
-    private int _isRefreshingFlag;
+    private bool _isRefreshingFlag;
     public async Task RefreshPorts()
     {
-        if (Interlocked.CompareExchange(ref _isRefreshingFlag, 1, 0) != 0)
+        if (Interlocked.CompareExchange(ref _isRefreshingFlag, true, false))
             return;
 
         try
@@ -85,7 +87,7 @@ internal sealed class SerialOutputTarget(int instanceIndex, IEventAggregator eve
         }
         finally
         {
-            Interlocked.Decrement(ref _isRefreshingFlag);
+            Interlocked.Exchange(ref _isRefreshingFlag, false);
             IsRefreshBusy = false;
         }
 
@@ -218,19 +220,18 @@ internal sealed class SerialOutputTarget(int instanceIndex, IEventAggregator eve
             else if (UpdateType == DeviceAxisUpdateType.PolledUpdate)
             {
                 serialPort.DataReceived += OnDataReceived;
-                PolledUpdate(DeviceAxis.All, () => !token.IsCancellationRequested, (_, axis, snapshot, elapsed) =>
+                PolledUpdate(DeviceAxis.All, () => !token.IsCancellationRequested, (_, axis, axisEvent, elapsed) =>
                 {
-                    Logger.Trace("Begin PolledUpdate [Axis: {0}, Index From: {1}, Index To: {2}, Duration: {3}, Elapsed: {4}]",
-                        axis, snapshot.IndexFrom, snapshot.IndexTo, snapshot.Duration, elapsed);
+                    Logger.Trace("Begin PolledUpdate [Axis: {0}, Event: {1}, Elapsed: {2}]", axis, axisEvent, elapsed);
 
                     var settings = AxisSettings[axis];
                     if (!settings.Enabled)
                         return;
-                    if (snapshot.KeyframeFrom == null || snapshot.KeyframeTo == null)
+                    if (!double.IsFinite(axisEvent.TargetValue))
                         return;
 
-                    var value = MathUtils.Lerp(settings.Minimum, settings.Maximum, snapshot.KeyframeTo.Value);
-                    var duration = snapshot.Duration;
+                    var value = MathUtils.Lerp(settings.Minimum, settings.Maximum, axisEvent.TargetValue);
+                    var duration = axisEvent.Duration;
 
                     var command = DeviceAxis.ToString(axis, value, duration * 1000);
                     if (serialPort.IsOpen && !string.IsNullOrWhiteSpace(command))
@@ -323,6 +324,18 @@ internal sealed class SerialOutputTarget(int instanceIndex, IEventAggregator eve
     {
         base.UnregisterActions(s);
         s.UnregisterAction($"{Identifier}::SerialPort::Set");
+    }
+
+    public override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Identifier}::SerialPort", () => SelectedSerialPort?.PortName);
+    }
+
+    public override void UnregisterProperties(IPropertyManager p)
+    {
+        base.UnregisterProperties(p);
+        p.UnregisterProperty($"{Identifier}::SerialPort");
     }
 
     protected override void Dispose(bool disposing)

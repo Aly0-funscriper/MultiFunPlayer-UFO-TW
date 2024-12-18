@@ -3,7 +3,7 @@ using StyletIoC;
 
 namespace MultiFunPlayer.UI.Controls.ViewModels;
 
-internal sealed class SettingsViewModel : Conductor<IScreen>.Collection.OneActive
+internal sealed class SettingsViewModel : Conductor<IScreen>.Collection.OneActive, IInjectionAware
 {
     [Inject] public GeneralSettingsViewModel General { get; set; }
     [Inject] public DeviceSettingsViewModel Device { get; set; }
@@ -11,14 +11,12 @@ internal sealed class SettingsViewModel : Conductor<IScreen>.Collection.OneActiv
     [Inject] public InputSettingsViewModel Input { get; set; }
     [Inject] public ShortcutSettingsViewModel Shortcut { get; set; }
 
-    protected override void OnInitialActivate()
+    public void ParametersInjected()
     {
         Items.Add(General);
         Items.Add(Device);
         Items.Add(Theme);
         Items.Add(Input);
         Items.Add(Shortcut);
-
-        base.OnInitialActivate();
     }
 }

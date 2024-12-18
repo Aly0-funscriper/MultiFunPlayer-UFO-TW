@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using Newtonsoft.Json;
 using PropertyChanged;
@@ -14,12 +15,12 @@ namespace MultiFunPlayer.MotionProvider.ViewModels;
 [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
 internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
 {
-    private readonly object _stateLock = new();
+    private readonly Lock _stateLock = new();
 
     private int _index;
     private KeyframeCollection _keyframes;
     private bool _playing;
-    private int _pendingRefreshFlag;
+    private bool _pendingRefreshFlag;
 
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
     public ObservableConcurrentCollection<Point> Points { get; set; }
@@ -38,7 +39,7 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
         : base(target, eventAggregator)
     {
         Points = [new()];
-        _pendingRefreshFlag = 1;
+        _pendingRefreshFlag = true;
 
         ResetState(true);
     }
@@ -53,11 +54,11 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
         if (newValue != null)
             newValue.CollectionChanged += OnPointsCollectionChanged;
 
-        Interlocked.Exchange(ref _pendingRefreshFlag, 1);
+        Interlocked.Exchange(ref _pendingRefreshFlag, true);
     }
 
     public void OnViewportChanged()
-        => Interlocked.Exchange(ref _pendingRefreshFlag, 1);
+        => Interlocked.Exchange(ref _pendingRefreshFlag, true);
 
     public void OnIsLoopingChanged()
     {
@@ -68,31 +69,37 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
 
     [SuppressPropertyChangedWarnings]
     private void OnPointsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-        => Interlocked.Exchange(ref _pendingRefreshFlag, 1);
+        => Interlocked.Exchange(ref _pendingRefreshFlag, true);
 
     public override void Update(double deltaTime)
     {
         if (Points == null || Points.Count == 0)
             return;
 
-        var needsRefresh = Interlocked.CompareExchange(ref _pendingRefreshFlag, 0, 1) == 1;
+        var needsRefresh = Interlocked.CompareExchange(ref _pendingRefreshFlag, false, true);
         if (needsRefresh)
         {
             if (IsLooping && Points.Count != 1)
             {
-                const int minimumTilePointCount = 3;
+                var minimumTilePointCount = InterpolationType switch
+                {
+                    InterpolationType.Makima => 3,
+                    InterpolationType.Pchip => 2,
+                    _ => 1
+                };
 
-                var tileCount = Math.Ceiling((double)minimumTilePointCount / Points.Count);
-                var newKeyframes = new KeyframeCollection(Points.Count + minimumTilePointCount * 2);
+                var tileCount = (int)Math.Ceiling(Math.Max(0, (minimumTilePointCount - Points.Count) / (double)Points.Count)) + 1;
+                var takeCount = Math.Min(minimumTilePointCount, Points.Count);
+                var newKeyframes = new KeyframeCollection(Points.Count + 2 * takeCount * tileCount);
                 for (var i = tileCount; i >= 1; i--)
-                    foreach (var point in Points.TakeLast(minimumTilePointCount))
+                    foreach (var point in Points.TakeLast(takeCount))
                         newKeyframes.Add(point.X - i * Viewport.Width, point.Y);
 
                 foreach (var point in Points)
                     newKeyframes.Add(point.X, point.Y);
 
                 for (var i = 1; i <= tileCount; i++)
-                    foreach (var point in Points.Take(minimumTilePointCount))
+                    foreach (var point in Points.Take(takeCount))
                         newKeyframes.Add(point.X + i * Viewport.Width, point.Y);
 
                 _keyframes = newKeyframes;
@@ -209,9 +216,9 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
         #region CustomCurveMotionProvider::Points
         s.RegisterAction<DeviceAxis, PointsActionSettingsViewModel>($"MotionProvider::{name}::Points::Set",
             s => s.WithLabel("Target axis").WithItemsSource(DeviceAxis.All),
-            s => s.WithDefaultValue(new PointsActionSettingsViewModel())
+            s => s.WithDefaultValue(() => new PointsActionSettingsViewModel())
                   .WithTemplateName("CustomCurveMotionProviderPointsTemplate")
-                  .WithCustomToString(x => $"Points({x.Points.Count})"),
+                  .WithCustomToString(vm => $"Points({vm.Points.Count})"),
             (axis, vm) => UpdateProperty(axis, p =>
             {
                 p.Duration = vm.Duration;
@@ -221,15 +228,57 @@ internal sealed class CustomCurveMotionProvider : AbstractMotionProvider
         #endregion
     }
 
-    [AddINotifyPropertyChangedInterface]
-    private sealed record PointsActionSettingsViewModel(ObservableConcurrentCollection<Point> Points, double Duration, InterpolationType InterpolationType)
+    public static void RegisterProperties(IPropertyManager p, Func<DeviceAxis, CustomCurveMotionProvider> getInstance)
     {
-        public PointsActionSettingsViewModel()
-            : this([new(0.5, 0.5)], 1, InterpolationType.Linear)
-        { }
+        TOut GetProperty<TOut>(DeviceAxis axis, Func<CustomCurveMotionProvider, TOut> callback)
+        {
+            var motionProvider = getInstance(axis);
+            if (motionProvider != null)
+                callback(motionProvider);
+
+            return default;
+        }
+
+        AbstractMotionProvider.RegisterProperties(p, getInstance);
+        var name = typeof(CustomCurveMotionProvider).GetCustomAttribute<DisplayNameAttribute>(inherit: false).DisplayName;
+
+        p.RegisterProperty<DeviceAxis, InterpolationType>($"MotionProvider::{name}::InterpolationType", axis => GetProperty(axis, p => p.InterpolationType));
+        p.RegisterProperty<DeviceAxis, double>($"MotionProvider::{name}::Duration", axis => GetProperty(axis, p => p.Duration));
+        p.RegisterProperty<DeviceAxis, bool>($"MotionProvider::{name}::IsLooping", axis => GetProperty(axis, p => p.IsLooping));
+        p.RegisterProperty<DeviceAxis, IReadOnlyCollection<Point>>($"MotionProvider::{name}::Points", axis => GetProperty(axis, p => p.Points.AsReadOnly()));
+    }
+
+    internal sealed class PointsActionSettingsViewModel : INotifyPropertyChanged
+    {
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)] public ObservableConcurrentCollection<Point> Points { get; set; }
+        public double Duration { get; set; }
+        public InterpolationType InterpolationType { get; set; }
+
+        public PointsActionSettingsViewModel() : this([new(0.5, 0.5)], 1, InterpolationType.Linear) { }
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0290:Use primary constructor", Justification = "OnPointsChanged not called with primary constructor")]
+        public PointsActionSettingsViewModel(ObservableConcurrentCollection<Point> points, double duration, InterpolationType interpolationType)
+        {
+            Points = points;
+            Duration = duration;
+            InterpolationType = interpolationType;
+        }
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:Remove unused private members")]
+        private void OnPointsChanged(ObservableConcurrentCollection<Point> oldPoints, ObservableConcurrentCollection<Point> newPoints)
+        {
+            if (oldPoints != null) oldPoints.CollectionChanged -= OnPointsCollectionChanged;
+            if (newPoints != null) newPoints.CollectionChanged += OnPointsCollectionChanged;
+        }
+
+        [SuppressPropertyChangedWarnings]
+        private void OnPointsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Points)));
 
         [JsonIgnore]
         [DependsOn(nameof(Duration))]
         public Rect Viewport => new(0, 0, Duration, 1);
+
+        public event PropertyChangedEventHandler PropertyChanged;
     }
 }

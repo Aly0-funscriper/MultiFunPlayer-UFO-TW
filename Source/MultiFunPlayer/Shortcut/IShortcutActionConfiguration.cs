@@ -1,39 +1,48 @@
-﻿using MultiFunPlayer.Input;
-using MultiFunPlayer.Settings;
+﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Input;
+using Newtonsoft.Json;
 using NLog;
 using PropertyChanged;
 using Stylet;
 using System.ComponentModel;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace MultiFunPlayer.Shortcut;
+
+internal enum ShortcutActionConfigurationState
+{
+    Valid,
+    MissingAction,
+    Placeholder
+}
 
 internal interface IShortcutActionConfiguration
 {
     string Name { get; }
     IReadOnlyList<IShortcutSetting> Settings { get; }
-
-    void Populate(IEnumerable<object> values);
-    void Populate(IEnumerable<TypedValue> values);
+    ShortcutActionConfigurationState State { get; set; }
 
     object[] GetActionParams(IInputGestureData gestureData = null);
 }
 
+[JsonObject(MemberSerialization.OptIn)]
 internal sealed class ShortcutActionConfiguration : PropertyChangedBase, IShortcutActionConfiguration
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
-    private readonly List<IShortcutSetting> _settings;
     private object[] _valuesBuffer;
 
-    public string Name { get; }
-    public IReadOnlyList<IShortcutSetting> Settings => _settings;
+    [JsonProperty] public string Name { get; }
+    [JsonProperty] public IReadOnlyList<IShortcutSetting> Settings { get; }
+    public ShortcutActionConfigurationState State { get; set; }
 
     public ShortcutActionConfiguration(string actionName, IEnumerable<IShortcutSetting> settings)
     {
         Name = actionName;
+        Settings = [.. settings];
 
-        _settings = settings.ToList();
-        foreach (var setting in _settings)
+        foreach (var setting in Settings)
         {
             if (setting is INotifyPropertyChanged settingPropertyChanged)
                 settingPropertyChanged.PropertyChanged += OnSettingPropertyChanged;
@@ -42,53 +51,67 @@ internal sealed class ShortcutActionConfiguration : PropertyChangedBase, IShortc
         }
     }
 
-    public string DisplayName => _settings.Count == 0 ? Name : $"{Name} [{string.Join(", ", Settings.Select(s => s.ToString()))}]";
-
-    public void Populate(IEnumerable<object> values)
-    {
-        foreach (var (setting, value) in Settings.Zip(values))
-            Populate(setting, value, value.GetType());
-    }
-
-    public void Populate(IEnumerable<TypedValue> values)
+    public ShortcutActionConfiguration(string actionName, IEnumerable<IShortcutSetting> settings, IEnumerable<TypedValue> values) : this(actionName, settings)
     {
         foreach (var (setting, value) in Settings.Zip(values))
             Populate(setting, value.Value, value.Type);
+
+        void Populate(IShortcutSetting setting, object value, Type valueType)
+        {
+            var settingType = setting.GetType().GetGenericArguments()[0];
+            var typeMatches = value == null ? !settingType.IsValueType || Nullable.GetUnderlyingType(settingType) != null
+                                            : valueType == settingType || valueType.IsAssignableTo(settingType);
+
+            if (!typeMatches)
+            {
+                Logger.Warn("Action \"{0}\" setting type mismatch! [\"{1}\" != \"{2}\"]", Name, settingType, valueType);
+            }
+            else
+            {
+                if (setting.Value is INotifyPropertyChanged oldPropertyChanged)
+                    oldPropertyChanged.PropertyChanged -= OnSettingPropertyChanged;
+
+                var coercedValue = setting.TemplateContext?.CoerceValue(value) ?? value;
+                if (!Equals(coercedValue, value))
+                    Logger.Warn("Action \"{0}\" setting value coerced from \"{1}\" to \"{2}\"", Name, value, coercedValue);
+
+                setting.Value = coercedValue;
+                if (setting.Value is INotifyPropertyChanged newPropertyChanged)
+                    newPropertyChanged.PropertyChanged += OnSettingPropertyChanged;
+            }
+        }
     }
 
-    private void Populate(IShortcutSetting setting, object value, Type valueType)
+    [DependsOn(nameof(State))]
+    public string DisplayName
     {
-        var settingType = setting.GetType().GetGenericArguments()[0];
-        var typeMatches = value == null ? !settingType.IsValueType || Nullable.GetUnderlyingType(settingType) != null
-                                        : valueType == settingType || valueType.IsAssignableTo(settingType);
-
-        if (!typeMatches)
+        get
         {
-            Logger.Warn("Action \"{0}\" setting type mismatch! [\"{1}\" != \"{2}\"]", Name, settingType, valueType);
-        }
-        else
-        {
-            if (setting.Value is INotifyPropertyChanged oldPropertyChanged)
-                oldPropertyChanged.PropertyChanged -= OnSettingPropertyChanged;
+            if (Settings.Count == 0)
+                return Name;
 
-            var coercedValue = setting.TemplateContext?.CoerceValue(value) ?? value;
-            if (!Equals(coercedValue, value))
-                Logger.Warn("Action \"{0}\" setting value coerced from \"{1}\" to \"{2}\"", Name, value, coercedValue);
+            var values = State != ShortcutActionConfigurationState.Placeholder
+                ? Settings.Select(s => s.ToString())
+                : Settings.Select(s =>
+                  {
+                      var method = s.Type.GetMethod("ToString", []);
+                      if (method.DeclaringType != typeof(object) && method.GetCustomAttribute<CompilerGeneratedAttribute>() == null)
+                          return s.ToString();
+                      return "?";
+                  });
 
-            setting.Value = coercedValue;
-            if (setting.Value is INotifyPropertyChanged newPropertyChanged)
-                newPropertyChanged.PropertyChanged += OnSettingPropertyChanged;
+            return $"{Name} [{string.Join(", ", values)}]";
         }
     }
 
     public object[] GetActionParams(IInputGestureData gestureData = null)
     {
-        _valuesBuffer ??= new object[gestureData == null ? _settings.Count : _settings.Count + 1];
+        _valuesBuffer ??= new object[gestureData == null ? Settings.Count : Settings.Count + 1];
 
         var i = 0;
         if (gestureData != null)
             _valuesBuffer[i++] = gestureData;
-        foreach (var setting in _settings)
+        foreach (var setting in Settings)
             _valuesBuffer[i++] = setting.Value;
 
         return _valuesBuffer;

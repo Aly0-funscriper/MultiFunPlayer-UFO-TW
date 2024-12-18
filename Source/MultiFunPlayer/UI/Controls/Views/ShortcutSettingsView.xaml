@@ -696,13 +696,24 @@
                                             </Button>
 
                                             <Button DockPanel.Dock="Right"
-                                                    Style="{StaticResource MaterialDesignFlatButton}"
                                                     Width="22"
                                                     Height="22"
                                                     Padding="0"
                                                     Click="{s:Action ConfigureAssignedAction}"
                                                     ToolTip="Configure"
                                                     Visibility="{Binding Settings.Count, Converter={StaticResource NotZeroToVisibilityConverter}}">
+                                                <Button.Resources>
+                                                    <Style BasedOn="{StaticResource MaterialDesignFlatButton}" TargetType="{x:Type Button}">
+                                                        <Setter Property="IsEnabled" Value="False"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding State}" Value="Valid">
+                                                                <DataTrigger.Setters>
+                                                                    <Setter Property="IsEnabled" Value="True"/>
+                                                                </DataTrigger.Setters>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Resources>
                                                 <material:PackIcon Width="14"
                                                                    Height="14"
                                                                    Kind="Wrench"/>
@@ -711,7 +722,22 @@
                                             <TextBlock DockPanel.Dock="Left"
                                                        Margin="0"
                                                        VerticalAlignment="Center"
-                                                       Text="{Binding DisplayName}"/>
+                                                       Text="{Binding DisplayName}">
+                                                <TextBlock.Resources>
+                                                    <Style BasedOn="{StaticResource MaterialDesignTextBlock}" TargetType="{x:Type TextBlock}">
+                                                        <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                        <Setter Property="Opacity" Value="0.56"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding State}" Value="Valid">
+                                                                <DataTrigger.Setters>
+                                                                    <Setter Property="TextDecorations" Value="None"/>
+                                                                    <Setter Property="Opacity" Value="1"/>
+                                                                </DataTrigger.Setters>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Resources>
+                                            </TextBlock>
                                         </DockPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

@@ -74,7 +74,7 @@
 
                 <ComboBox DockPanel.Dock="Left"
                           ItemsSource="{Binding LogLevels}"
-                          SelectedItem="{Binding SelectedLogLevel}"
+                          SelectedItem="{Binding LogLevel}"
                           Width="100"/>
             </DockPanel>
 
@@ -87,6 +87,17 @@
                 <CheckBox DockPanel.Dock="Left"
                           Margin="0 0 10 0"
                           IsChecked="{Binding EnableUILogging}"/>
+            </DockPanel>
+
+            <DockPanel DockPanel.Dock="Top" LastChildFill="False">
+                <TextBlock DockPanel.Dock="Left"
+                           Margin="0 0 10 0"
+                           VerticalAlignment="Center"
+                           Text="Enable JSON logging:"/>
+
+                <CheckBox DockPanel.Dock="Left"
+                          Margin="0 0 10 0"
+                          IsChecked="{Binding EnableJsonLogging}"/>
             </DockPanel>
         </DockPanel>
     </Grid>

@@ -1,5 +1,6 @@
 ﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.OutputTarget;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using Newtonsoft.Json.Linq;
 using NLog;
@@ -12,6 +13,7 @@ internal sealed class OutputTargetViewModel : Conductor<IOutputTarget>.Collectio
     private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
 
     private readonly IShortcutManager _shortcutManager;
+    private readonly IPropertyManager _propertyManager;
     private readonly IOutputTargetFactory _outputTargetFactory;
     private Task _task;
     private CancellationTokenSource _cancellationSource;
@@ -24,9 +26,10 @@ internal sealed class OutputTargetViewModel : Conductor<IOutputTarget>.Collectio
     public int ScanDelay { get; set; } = 2500;
     public int ScanInterval { get; set; } = 5000;
 
-    public OutputTargetViewModel(IShortcutManager shortcutManager, IEventAggregator eventAggregator, IOutputTargetFactory outputTargetFactory)
+    public OutputTargetViewModel(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator, IOutputTargetFactory outputTargetFactory)
     {
         _shortcutManager = shortcutManager;
+        _propertyManager = propertyManager;
         _outputTargetFactory = outputTargetFactory;
         eventAggregator.Subscribe(this);
 
@@ -59,20 +62,20 @@ internal sealed class OutputTargetViewModel : Conductor<IOutputTarget>.Collectio
     private void AddItem(IOutputTarget target)
     {
         Items.Add(target);
+        ActivateItem(target);
         _semaphores.Add(target, new SemaphoreSlim(1, 1));
-        ActiveItem ??= target;
 
         Logger.Debug("Added new output \"{0}\"", target.Identifier);
         RegisterActions(_shortcutManager, target);
+        RegisterProperties(_propertyManager, target);
     }
 
     public async void RemoveItem(IOutputTarget target)
     {
         Logger.Debug("Removing output \"{0}\"", target.Identifier);
 
-        var index = Items.IndexOf(target);
+        CloseItem(target);
 
-        Items.Remove(target);
         var semaphore = _semaphores[target];
         _semaphores.Remove(target);
 
@@ -87,12 +90,11 @@ internal sealed class OutputTargetViewModel : Conductor<IOutputTarget>.Collectio
         }
 
         UnregisterActions(_shortcutManager, target);
+        UnregisterProperties(_propertyManager, target);
 
         semaphore.Release();
         semaphore.Dispose();
         target.Dispose();
-
-        ActiveItem = Items.Count > 0 ? Items[Math.Clamp(index, 0, Items.Count - 1)] : null;
     }
 
     protected override void OnViewLoaded()
@@ -232,6 +234,9 @@ internal sealed class OutputTargetViewModel : Conductor<IOutputTarget>.Collectio
         s.UnregisterAction($"{target.Identifier}::Connection::Connect");
         s.UnregisterAction($"{target.Identifier}::Connection::Disconnect");
     }
+
+    private void RegisterProperties(IPropertyManager p, IOutputTarget target) => target.RegisterProperties(p);
+    private void UnregisterProperties(IPropertyManager p, IOutputTarget target) => target.UnregisterProperties(p);
 
     private void Dispose(bool disposing)
     {

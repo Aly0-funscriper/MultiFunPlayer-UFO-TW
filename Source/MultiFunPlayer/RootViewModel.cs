@@ -24,6 +24,7 @@ internal sealed class RootViewModel : Conductor<IScreen>.Collection.AllActive, I
     [Inject] public MediaSourceViewModel MediaSource { get; set; }
     [Inject] public OutputTargetViewModel OutputTarget { get; set; }
     [Inject] public SettingsViewModel Settings { get; set; }
+    [Inject] public PluginStatusViewModel PluginStatus { get; set; }
     [Inject] public PluginViewModel Plugin { get; set; }
     [Inject] public InformationViewModel Information { get; set; }
     [Inject] public ISnackbarMessageQueue SnackbarMessageQueue { get; set; }
@@ -47,19 +48,18 @@ internal sealed class RootViewModel : Conductor<IScreen>.Collection.AllActive, I
 
     protected override void OnActivate()
     {
-        Items.Add(Script);
-        Items.Add(MediaSource);
-        Items.Add(OutputTarget);
-        Items.Add(Settings);
         Items.Add(Plugin);
+        Items.Add(MediaSource);
+        Items.Add(Script);
+        Items.Add(OutputTarget);
 
         ActivateAndSetParent(Items);
         base.OnActivate();
     }
 
-    public void OnInformationClick() => _ = DialogHelper.ShowOnUIThreadAsync(Information, "RootDialog");
-    public void OnSettingsClick() => _ = DialogHelper.ShowOnUIThreadAsync(Settings, "RootDialog");
-    public void OnPluginClick() => _ = DialogHelper.ShowOnUIThreadAsync(Plugin, "RootDialog");
+    public void OnInformationClick() => _ = DialogHelper.ShowAsync(Information, "RootDialog");
+    public void OnSettingsClick() => _ = DialogHelper.ShowAsync(Settings, "RootDialog");
+    public void OnPluginClick() => _ = DialogHelper.ShowAsync(PluginStatus, "RootDialog");
 
     protected override void OnViewLoaded()
     {

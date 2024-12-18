@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Script;
 using MultiFunPlayer.Script.Repository;
 using MultiFunPlayer.Shortcut;
@@ -16,9 +17,10 @@ using System.Windows;
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("Internal")]
-internal sealed class InternalMediaSource(ILocalScriptRepository localRepository, IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class InternalMediaSource(ILocalScriptRepository localRepository, IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
-    private readonly object _playlistLock = new();
+    private readonly Lock _playlistLock = new();
 
     private bool _isPlaying;
     private double _position;
@@ -153,8 +155,7 @@ internal sealed class InternalMediaSource(ILocalScriptRepository localRepository
         if (IsDisposing)
             return;
 
-        PlayIndex(-1);
-        SetIsPlaying(false);
+        ResetState();
     }
 
     private bool? CheckIndexAndRefresh(int index)
@@ -322,27 +323,28 @@ internal sealed class InternalMediaSource(ILocalScriptRepository localRepository
 
         result.Merge(DeviceAxis.All.Except(result.Keys).ToDictionary(a => a, _ => default(IScriptResource)));
         PublishMessage(new ChangeScriptMessage(result));
+    }
 
-        void ResetState()
-        {
-            SetDuration(double.NaN);
-            SetPosition(double.NaN);
-            PublishMessage(new ChangeScriptMessage(DeviceAxis.All, null));
-        }
+    private void ResetState()
+    {
+        _duration = double.NaN;
+        _position = double.NaN;
+        _isPlaying = false;
+        PublishMessage(new MediaResetMessage());
     }
 
     private void SetDuration(double duration)
     {
         _duration = duration;
         if (Status is ConnectionStatus.Connected or ConnectionStatus.Disconnecting)
-            PublishMessage(new MediaDurationChangedMessage(double.IsFinite(duration) ? TimeSpan.FromSeconds(duration) : null));
+            PublishMessage(new MediaDurationChangedMessage(TimeSpan.FromSeconds(duration)));
     }
 
     private void SetPosition(double position, bool forceSeek = false)
     {
         _position = position;
         if (Status is ConnectionStatus.Connected or ConnectionStatus.Disconnecting)
-            PublishMessage(new MediaPositionChangedMessage(double.IsFinite(position) ? TimeSpan.FromSeconds(position) : null, forceSeek));
+            PublishMessage(new MediaPositionChangedMessage(TimeSpan.FromSeconds(position), forceSeek));
     }
 
     private void SetSpeed(double speed)
@@ -427,6 +429,11 @@ internal sealed class InternalMediaSource(ILocalScriptRepository localRepository
         s.RegisterAction($"{Name}::Looping::Toggle", () => IsLooping = !IsLooping);
         #endregion
 
+        #region LoadAdditionalScripts
+        s.RegisterAction<bool>($"{Name}::LoadAdditionalScripts::Set", s => s.WithLabel("Enable load additional scripts"), enabled => LoadAdditionalScripts = enabled);
+        s.RegisterAction($"{Name}::LoadAdditionalScripts::Toggle", () => LoadAdditionalScripts = !LoadAdditionalScripts);
+        #endregion
+
         #region Playlist
         s.RegisterAction($"{Name}::Playlist::Clear", () => WhenConnected(ClearPlaylist));
         s.RegisterAction($"{Name}::Playlist::Prev", () => WhenConnected(PlayPrevious));
@@ -445,6 +452,21 @@ internal sealed class InternalMediaSource(ILocalScriptRepository localRepository
                 WriteMessage(new PlayScriptAtIndexMessage(index));
         }));
         #endregion
+    }
+
+    protected override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Name}::IsShuffling", () => IsShuffling);
+        p.RegisterProperty($"{Name}::Looping", () => IsLooping);
+        p.RegisterProperty($"{Name}::LoadAdditionalScripts", () => LoadAdditionalScripts);
+        p.RegisterProperty($"{Name}::CurrentFile", () => _currentItem?.AsRefreshed()?.AsFileInfo());
+        p.RegisterProperty($"{Name}::PlaylistIndex", () => PlaylistIndex);
+        p.RegisterProperty<IReadOnlyCollection<FileInfo>>($"{Name}::PlaylistFiles", () =>
+        {
+            lock(_playlistLock)
+                return ScriptPlaylist.Select(s => s?.AsRefreshed()?.AsFileInfo()).NotNull().ToList().AsReadOnly();
+        });
     }
 
     public void OnPlayScript(object sender, EventArgs e)

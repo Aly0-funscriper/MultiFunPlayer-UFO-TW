@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json.Linq;
@@ -13,7 +14,8 @@ using System.Text.RegularExpressions;
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("MPC-HC")]
-internal sealed class MpcMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class MpcMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     public override ConnectionStatus Status { get; protected set; }
     public bool IsConnected => Status == ConnectionStatus.Connected;
@@ -40,7 +42,8 @@ internal sealed class MpcMediaSource(IShortcutManager shortcutManager, IEventAgg
 
         try
         {
-            client.Timeout = TimeSpan.FromMilliseconds(500);
+            if (connectionType == ConnectionType.AutoConnect)
+                client.Timeout = TimeSpan.FromMilliseconds(500);
 
             var uri = new Uri($"http://{Endpoint.ToUriString()}");
             var response = await client.GetAsync(uri, token);
@@ -77,23 +80,24 @@ internal sealed class MpcMediaSource(IShortcutManager shortcutManager, IEventAgg
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(HttpClient client, CancellationToken token)
     {
-        var variablesUri = new Uri($"http://{Endpoint.ToUriString()}/variables.html");
-        var variableRegex = new Regex(@"<p id=""(?<name>.+?)"">(?<value>.+?)<\/p>", RegexOptions.Compiled);
-        var playerState = new PlayerState();
-
         try
         {
+            var variablesUri = new Uri($"http://{Endpoint.ToUriString()}/variables.html");
+            var variableRegex = new Regex(@"<p id=""(?<name>.+?)"">(?<value>.+?)<\/p>", RegexOptions.Compiled);
+            var playerState = default(PlayerState);
+
             using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(200));
             while (await timer.WaitForNextTickAsync(token) && !token.IsCancellationRequested)
             {
                 var response = await client.GetAsync(variablesUri, token);
                 response.EnsureSuccessStatusCode();
+
+                playerState ??= new PlayerState();
 
                 var message = await response.Content.ReadAsStringAsync(token);
                 Logger.Trace("Received \"{0}\" from \"{1}\"", message, Name);
@@ -101,23 +105,27 @@ internal sealed class MpcMediaSource(IShortcutManager shortcutManager, IEventAgg
                 var variables = variableRegex.Matches(message).NotNull().ToDictionary(m => m.Groups["name"].Value, m => m.Groups["value"].Value);
                 if (variables.TryGetValue("state", out var stateString) && int.TryParse(stateString, out var state) && state != playerState.State)
                 {
-                    PublishMessage(new MediaPlayingChangedMessage(state == 2));
+                    if (playerState.State >= 0)
+                        PublishMessage(new MediaPlayingChangedMessage(state == 2));
+
                     playerState.State = state;
                 }
 
                 if (playerState.State < 0)
                     continue;
 
-                if (variables.TryGetValue("filepath", out var path))
+                if (variables.TryGetValue("filepath", out var path) && !string.IsNullOrWhiteSpace(path))
                 {
-                    if (string.IsNullOrWhiteSpace(path))
-                        path = null;
-
                     if (path != playerState.Path)
                     {
                         PublishMessage(new MediaPathChangedMessage(path));
                         playerState.Path = path;
                     }
+                }
+                else
+                {
+                    ResetState();
+                    continue;
                 }
 
                 if (variables.TryGetValue("duration", out var durationString) && long.TryParse(durationString, out var duration) && duration >= 0 && duration != playerState.Duration)
@@ -137,6 +145,15 @@ internal sealed class MpcMediaSource(IShortcutManager shortcutManager, IEventAgg
                     PublishMessage(new MediaSpeedChangedMessage(speed));
                     playerState.Speed = speed;
                 }
+            }
+
+            void ResetState()
+            {
+                if (playerState == null)
+                    return;
+
+                PublishMessage(new MediaResetMessage());
+                playerState = null;
             }
         }
         catch (OperationCanceledException e) when (e.InnerException is TimeoutException t) { t.Throw(); }
@@ -208,6 +225,12 @@ internal sealed class MpcMediaSource(IShortcutManager shortcutManager, IEventAgg
                 Endpoint = endpoint;
         });
         #endregion
+    }
+
+    protected override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Name}::Endpoint", () => Endpoint);
     }
 
     private sealed class PlayerState

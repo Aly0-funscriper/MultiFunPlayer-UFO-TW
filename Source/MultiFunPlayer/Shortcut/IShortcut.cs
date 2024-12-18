@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
 using Newtonsoft.Json;
 using PropertyChanged;
@@ -36,10 +36,10 @@ internal abstract partial class AbstractShortcut<TGesture, TData>(IShortcutActio
 {
     private readonly ConcurrentDictionary<string, Timer> _actions = [];
     private readonly ConcurrentDictionary<string, (Task Task, CancellationTokenSource CancellationSource)> _repeatingActions = [];
-    private int _isScheduled;
+    private bool _isScheduled;
 
     [JsonIgnore]
-    protected object SyncRoot { get; } = new();
+    protected Lock SyncRoot { get; } = new();
 
     public string Name { get; set; } = null;
 
@@ -59,14 +59,14 @@ internal abstract partial class AbstractShortcut<TGesture, TData>(IShortcutActio
             return;
         if (Configurations.Count == 0)
             return;
-        if (Interlocked.CompareExchange(ref _isScheduled, 1, 0) != 0)
+        if (Interlocked.CompareExchange(ref _isScheduled, true, false))
             return;
 
         if (!actionRunner.ScheduleInvoke(Configurations, gestureData, OnInvoked))
-            _isScheduled = 0;
+            Interlocked.Exchange(ref _isScheduled, false);
     }
 
-    private void OnInvoked() => _isScheduled = 0;
+    private void OnInvoked() => Interlocked.Exchange(ref _isScheduled, false);
 
     protected void Delay(int milisecondsDelay, Action action, string key = "")
         => Delay(TimeSpan.FromMilliseconds(milisecondsDelay), action, key);

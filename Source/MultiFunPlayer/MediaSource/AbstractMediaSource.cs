@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json.Linq;
@@ -26,7 +27,7 @@ internal abstract class AbstractMediaSource : Screen, IMediaSource, IHandle<IMed
 
     protected bool IsDisposing { get; private set; }
 
-    protected AbstractMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator)
+    protected AbstractMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
     {
         _messageChannel = Channel.CreateUnbounded<IMediaSourceControlMessage>(new UnboundedChannelOptions()
         {
@@ -41,6 +42,7 @@ internal abstract class AbstractMediaSource : Screen, IMediaSource, IHandle<IMed
         Logger = LogManager.GetLogger(GetType().FullName);
 
         RegisterActions(shortcutManager);
+        RegisterProperties(propertyManager);
     }
 
     protected void PublishMessage(object message)
@@ -104,10 +106,10 @@ internal abstract class AbstractMediaSource : Screen, IMediaSource, IHandle<IMed
 
     protected abstract ValueTask<bool> OnConnectingAsync(ConnectionType connectionType);
 
-    private int _isDisconnectingFlag;
+    private bool _isDisconnectingFlag;
     protected async ValueTask OnDisconnectingAsync()
     {
-        if (Interlocked.CompareExchange(ref _isDisconnectingFlag, 1, 0) != 0)
+        if (Interlocked.CompareExchange(ref _isDisconnectingFlag, true, false))
             return;
 
         _cancellationSource?.Cancel();
@@ -118,7 +120,7 @@ internal abstract class AbstractMediaSource : Screen, IMediaSource, IHandle<IMed
         _cancellationSource = null;
         _task = null;
 
-        Interlocked.Decrement(ref _isDisconnectingFlag);
+        Interlocked.Exchange(ref _isDisconnectingFlag, false);
     }
 
     public async Task WaitForStatus(IEnumerable<ConnectionStatus> statuses, CancellationToken token)
@@ -165,6 +167,12 @@ internal abstract class AbstractMediaSource : Screen, IMediaSource, IHandle<IMed
         #endregion
     }
 
+    protected virtual void RegisterProperties(IPropertyManager p)
+    {
+        p.RegisterProperty($"{Name}::AutoConnectEnabled", () => AutoConnectEnabled);
+        p.RegisterProperty($"{Name}::Connection::Status", () => Status);
+    }
+
     protected async ValueTask WaitForMessageAsync(CancellationToken token)
         => await _messageChannel.Reader.WaitToReadAsync(token);
 
@@ -184,11 +192,7 @@ internal abstract class AbstractMediaSource : Screen, IMediaSource, IHandle<IMed
     }
 
     protected virtual void Dispose(bool disposing)
-    {
-        var valueTask = OnDisconnectingAsync();
-        if (!valueTask.IsCompleted)
-            valueTask.AsTask().GetAwaiter().GetResult();
-    }
+        => OnDisconnectingAsync().Preserve().GetAwaiter().GetResult();
 
     public void Dispose()
     {

@@ -1,6 +1,7 @@
 ﻿using Buttplug;
 using Buttplug.NewtonsoftJson;
 using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json;
@@ -228,12 +229,12 @@ internal sealed class ButtplugOutputTarget : AsyncAbstractOutputTarget
 
     private async Task PolledUpdateAsync(ButtplugClient client, CancellationToken token)
     {
-        await PolledUpdateAsync(DeviceAxis.All, () => !token.IsCancellationRequested && client.IsConnected, async (_, axis, snapshot, elapsed) =>
+        await PolledUpdateAsync(DeviceAxis.All, () => !token.IsCancellationRequested && client.IsConnected, async (_, axis, axisEvent, elapsed) =>
         {
-            Logger.Trace("Begin PolledUpdate [Axis: {0}, Index From: {1}, Index To: {2}, Duration: {3}, Elapsed: {4}]", axis, snapshot.IndexFrom, snapshot.IndexTo, snapshot.Duration, elapsed);
+            Logger.Trace("Begin PolledUpdate [Axis: {0}, Event: {1}, Elapsed: {2}]", axis, axisEvent, elapsed);
 
             var settings = DeviceSettings.Where(x => x.SourceAxis == axis && x.UpdateType == DeviceAxisUpdateType.PolledUpdate);
-            var tasks = GetDeviceTasks(snapshot, settings, token).ToList();
+            var tasks = GetDeviceTasks(axisEvent, settings, token).ToList();
 
             try
             {
@@ -280,17 +281,17 @@ internal sealed class ButtplugOutputTarget : AsyncAbstractOutputTarget
             return Task.CompletedTask;
         }, token);
 
-    private IEnumerable<Task> GetDeviceTasks(DeviceAxisScriptSnapshot snapshot, IEnumerable<ButtplugDeviceSettings> settings, CancellationToken token)
+    private IEnumerable<Task> GetDeviceTasks(DeviceAxisValueEvent axisEvent, IEnumerable<ButtplugDeviceSettings> settings, CancellationToken token)
         => GetDeviceTasks(settings, (s, a) =>
         {
-            if (snapshot.KeyframeFrom == null || snapshot.KeyframeTo == null)
+            if (!double.IsFinite(axisEvent.TargetValue))
                 return Task.CompletedTask;
 
             var axisSettings = AxisSettings[s.SourceAxis];
-            var value = MathUtils.Lerp(axisSettings.Minimum, axisSettings.Maximum, snapshot.KeyframeTo.Value);
+            var value = MathUtils.Lerp(axisSettings.Minimum, axisSettings.Maximum, axisEvent.TargetValue);
             if (a is ButtplugDeviceLinearActuator linearActuator)
             {
-                var duration = (uint)Math.Floor(snapshot.Duration * 1000 + 0.75);
+                var duration = (uint)Math.Floor(axisEvent.Duration * 1000 + 0.75);
                 Logger.Trace("Sending \"{value} (Duration={duration})\" to \"{actuator}\"", value, duration, a);
                 return linearActuator.LinearAsync(duration, value, token);
             }
@@ -417,6 +418,19 @@ internal sealed class ButtplugOutputTarget : AsyncAbstractOutputTarget
     {
         base.UnregisterActions(s);
         s.UnregisterAction($"{Identifier}::Endpoint::Set");
+    }
+
+    public override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Identifier}::Endpoint", () => Endpoint);
+    }
+
+    public override void UnregisterProperties(IPropertyManager p)
+    {
+        base.UnregisterProperties(p);
+        p.UnregisterProperty($"{Identifier}::Endpoint");
+
     }
 
     public void OnSettingsAdd()

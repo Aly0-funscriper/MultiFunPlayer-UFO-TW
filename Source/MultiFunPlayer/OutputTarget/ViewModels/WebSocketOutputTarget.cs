@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json.Linq;
@@ -119,19 +120,18 @@ internal sealed class WebSocketOutputTarget(int instanceIndex, IEventAggregator 
             }
             else if (UpdateType == DeviceAxisUpdateType.PolledUpdate)
             {
-                await PolledUpdateAsync(DeviceAxis.All, () => !token.IsCancellationRequested, async (_, axis, snapshot, elapsed) =>
+                await PolledUpdateAsync(DeviceAxis.All, () => !token.IsCancellationRequested, async (_, axis, axisEvent, elapsed) =>
                 {
-                    Logger.Trace("Begin PolledUpdate [Axis: {0}, Index From: {1}, Index To: {2}, Duration: {3}, Elapsed: {4}]",
-                        axis, snapshot.IndexFrom, snapshot.IndexTo, snapshot.Duration, elapsed);
+                    Logger.Trace("Begin PolledUpdate [Axis: {0}, Event: {1}, Elapsed: {2}]", axis, axisEvent, elapsed);
 
                     var settings = AxisSettings[axis];
                     if (!settings.Enabled)
                         return;
-                    if (snapshot.KeyframeFrom == null || snapshot.KeyframeTo == null)
+                    if (!double.IsFinite(axisEvent.TargetValue))
                         return;
 
-                    var value = MathUtils.Lerp(settings.Minimum, settings.Maximum, snapshot.KeyframeTo.Value);
-                    var duration = snapshot.Duration;
+                    var value = MathUtils.Lerp(settings.Minimum, settings.Maximum, axisEvent.TargetValue);
+                    var duration = axisEvent.Duration;
 
                     var command = DeviceAxis.ToString(axis, value, duration * 1000);
                     if (client.State == WebSocketState.Open && !string.IsNullOrWhiteSpace(command))
@@ -195,5 +195,17 @@ internal sealed class WebSocketOutputTarget(int instanceIndex, IEventAggregator 
     {
         base.UnregisterActions(s);
         s.UnregisterAction($"{Identifier}::Uri::Set");
+    }
+
+    public override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Identifier}::Uri", () => Uri);
+    }
+
+    public override void UnregisterProperties(IPropertyManager p)
+    {
+        base.UnregisterProperties(p);
+        p.UnregisterProperty($"{Identifier}::Uri");
     }
 }

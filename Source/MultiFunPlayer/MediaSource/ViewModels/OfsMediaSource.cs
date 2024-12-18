@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Script;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
@@ -14,7 +15,8 @@ using System.Text;
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("OFS")]
-internal sealed class OfsMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class OfsMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     public override ConnectionStatus Status { get; protected set; }
     public bool IsConnected => Status == ConnectionStatus.Connected;
@@ -82,8 +84,7 @@ internal sealed class OfsMediaSource(IShortcutManager shortcutManager, IEventAgg
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(ClientWebSocket client, CancellationToken token)
@@ -110,7 +111,10 @@ internal sealed class OfsMediaSource(IShortcutManager shortcutManager, IEventAgg
                     switch (eventName)
                     {
                         case "media_change":
-                            PublishMessage(new MediaPathChangedMessage(dataToken.TryGetValue<string>("path", out var path) && !string.IsNullOrWhiteSpace(path) ? path : null, ReloadScripts: false));
+                            if (dataToken.TryGetValue<string>("path", out var path) && !string.IsNullOrWhiteSpace(path))
+                                PublishMessage(new MediaPathChangedMessage(path, ReloadScripts: false));
+                            else
+                                PublishMessage(new MediaResetMessage());
                             break;
                         case "play_change":
                             if (dataToken.TryGetValue<bool>("playing", out var isPlaying))
@@ -165,8 +169,7 @@ internal sealed class OfsMediaSource(IShortcutManager shortcutManager, IEventAgg
 
                             break;
                         case "project_change":
-                            PublishMessage(new MediaPathChangedMessage(null, ReloadScripts: false));
-                            PublishMessage(new MediaPlayingChangedMessage(false));
+                            PublishMessage(new MediaResetMessage());
                             break;
                     }
                 }
@@ -234,5 +237,11 @@ internal sealed class OfsMediaSource(IShortcutManager shortcutManager, IEventAgg
                 Uri = uri;
         });
         #endregion
+    }
+
+    protected override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Name}::Uri", () => Uri);
     }
 }

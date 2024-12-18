@@ -14,14 +14,18 @@ public static partial class NetUtils
         MaxConnectionsPerServer = 5
     };
 
-    public static HttpClient CreateHttpClient() => new(_handler, disposeHandler: false);
+    public static HttpClient CreateHttpClient()
+        => new(_handler, disposeHandler: false)
+        {
+            Timeout = TimeSpan.FromSeconds(5)
+        };
 
     public static EndPoint ParseEndpoint(string endpointString)
     {
         if (string.IsNullOrWhiteSpace(endpointString))
             return null;
 
-        var match = EndpointRegex().Match(endpointString);
+        var match = EndpointRegex.Match(endpointString);
         if (!match.Success)
             return null;
 
@@ -65,5 +69,5 @@ public static partial class NetUtils
     }
 
     [GeneratedRegex(@"^(?:(?<family>InterNetwork|InterNetworkV6|Unspecified)\/)?(?<ipOrHost>.+):(?<port>\d+)$")]
-    private static partial Regex EndpointRegex();
+    private static partial Regex EndpointRegex { get; }
 }

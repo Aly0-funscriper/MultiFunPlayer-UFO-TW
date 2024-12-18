@@ -1,4 +1,4 @@
-using MaterialDesignThemes.Wpf;
+﻿using MaterialDesignThemes.Wpf;
 using MultiFunPlayer.Common;
 using Newtonsoft.Json.Linq;
 using Stylet;
@@ -51,7 +51,6 @@ internal sealed class InformationViewModel : Screen
             return;
 
         using var client = NetUtils.CreateHttpClient();
-        client.Timeout = TimeSpan.FromSeconds(5);
         client.DefaultRequestHeaders.Add("User-Agent", nameof(MultiFunPlayer));
         client.DefaultRequestHeaders.Add("Accept", "application/vnd.github+json");
 

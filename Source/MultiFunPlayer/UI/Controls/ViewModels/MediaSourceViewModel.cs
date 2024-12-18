@@ -39,7 +39,7 @@ internal sealed class MediaSourceViewModel : Conductor<IMediaSource>.Collection.
         if (!Items.Contains(source))
         {
             Items.Add(source);
-            ActiveItem = source;
+            ActivateItem(source);
         }
         else
         {
@@ -48,9 +48,7 @@ internal sealed class MediaSourceViewModel : Conductor<IMediaSource>.Collection.
             if (_currentSource == source)
                 await DisconnectCurrentSourceAsync(token);
 
-            var selectedIndex = Items.IndexOf(ActiveItem);
-            Items.Remove(source);
-            ActiveItem = Items.Count > 0 ? Items[Math.Clamp(selectedIndex, 0, Items.Count - 1)] : null;
+            CloseItem(source);
 
             _semaphore.Release();
         }

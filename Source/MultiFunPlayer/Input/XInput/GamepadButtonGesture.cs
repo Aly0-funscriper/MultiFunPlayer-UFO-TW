@@ -8,10 +8,10 @@ internal sealed record GamepadButtonGestureDescriptor : ISimpleInputGestureDescr
 
     private readonly SortedSet<GamepadVirtualKey> _buttons;
 
-    public int UserIndex { get; }
+    public uint UserIndex { get; }
     public IReadOnlyCollection<GamepadVirtualKey> Buttons => _buttons;
 
-    public GamepadButtonGestureDescriptor(int userIndex, IEnumerable<GamepadVirtualKey> buttons)
+    public GamepadButtonGestureDescriptor(uint userIndex, IEnumerable<GamepadVirtualKey> buttons)
     {
         _buttons = new SortedSet<GamepadVirtualKey>(buttons.ToHashSet());
         UserIndex = userIndex;
@@ -24,10 +24,10 @@ internal sealed record GamepadButtonGestureDescriptor : ISimpleInputGestureDescr
 
 internal sealed class GamepadButtonGesture(GamepadButtonGestureDescriptor descriptor, bool state) : AbstractSimpleInputGesture(descriptor, state)
 {
-    public int UserIndex => descriptor.UserIndex;
+    public uint UserIndex => descriptor.UserIndex;
     public IEnumerable<GamepadVirtualKey> Buttons => descriptor.Buttons;
 
     public override string ToString() => $"[Gamepad Buttons: {UserIndex}/{string.Join(", ", Buttons)}, State: {State}]";
 
-    internal static GamepadButtonGesture Create(int userIndex, IEnumerable<GamepadVirtualKey> buttons, bool state) => new(new(userIndex, buttons), state);
+    internal static GamepadButtonGesture Create(uint userIndex, IEnumerable<GamepadVirtualKey> buttons, bool state) => new(new(userIndex, buttons), state);
 }

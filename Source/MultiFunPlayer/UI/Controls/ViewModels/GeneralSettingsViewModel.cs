@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Settings;
 using Newtonsoft.Json.Linq;
 using NLog;
 using Stylet;
@@ -19,25 +20,28 @@ internal sealed class GeneralSettingsViewModel : Screen, IHandle<SettingsMessage
 {
     private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
 
+    private readonly INewtonsoftJsonLoggerManager _newtonsoftLoggerManager;
     private readonly IStyletLoggerManager _styletLoggerManager;
 
     public IReadOnlyCollection<LogLevel> LogLevels { get; }
 
-    public LogLevel SelectedLogLevel { get; set; } = LogLevel.Info;
+    public LogLevel LogLevel { get; set; } = LogLevel.Info;
     public bool EnableUILogging { get; set; } = false;
+    public bool EnableJsonLogging { get; set; } = false;
     public bool AllowWindowResize { get; set; } = false;
     public bool AlwaysOnTop { get; set; } = false;
     public ErrorDisplayType ErrorDisplayType { get; set; } = ErrorDisplayType.Snackbar;
     public Orientation AppOrientation { get; set; } = Orientation.Vertical;
     public bool RememberWindowLocation { get; set; } = false;
 
-    public GeneralSettingsViewModel(IStyletLoggerManager styletLoggerManager, IEventAggregator eventAggregator)
+    public GeneralSettingsViewModel(INewtonsoftJsonLoggerManager newtonsoftLoggerManager, IStyletLoggerManager styletLoggerManager, IEventAggregator eventAggregator)
     {
         DisplayName = "General";
         eventAggregator.Subscribe(this);
 
+        _newtonsoftLoggerManager = newtonsoftLoggerManager;
         _styletLoggerManager = styletLoggerManager;
-        LogLevels = LogLevel.AllLevels.ToList().AsReadOnly();
+        LogLevels = [.. LogLevel.AllLevels];
     }
 
     public void OnAlwaysOnTopChanged()
@@ -49,13 +53,8 @@ internal sealed class GeneralSettingsViewModel : Screen, IHandle<SettingsMessage
         window.Topmost = AlwaysOnTop;
     }
 
-    public void OnEnableUILoggingChanged()
-    {
-        if (EnableUILogging)
-            _styletLoggerManager.ResumeLogging();
-        else
-            _styletLoggerManager.SuspendLogging();
-    }
+    public void OnEnableJsonLoggingChanged() => _newtonsoftLoggerManager.IsEnabled = EnableJsonLogging;
+    public void OnEnableUILoggingChanged() => _styletLoggerManager.IsEnabled = EnableUILogging;
 
     public void OnAllowWindowResizeChanged()
     {
@@ -87,17 +86,17 @@ internal sealed class GeneralSettingsViewModel : Screen, IHandle<SettingsMessage
             window.Width = window.MinWidth = window.MaxWidth = 1200;
     }
 
-    public void OnSelectedLogLevelChanged()
+    public void OnLogLevelChanged()
     {
-        if (SelectedLogLevel == null)
+        if (LogLevel == null)
             return;
 
-        Logger.Info("Changing log level to \"{0}\"", SelectedLogLevel.Name);
+        Logger.Info("Changing log level to \"{0}\"", LogLevel.Name);
 
-        LogManager.Configuration.FindRuleByName("application")?.SetLoggingLevels(SelectedLogLevel, LogLevel.Fatal);
+        LogManager.Configuration.FindRuleByName("application")?.SetLoggingLevels(LogLevel, LogLevel.Fatal);
         if (Debugger.IsAttached)
         {
-            var debugLogLevel = LogLevel.FromOrdinal(Math.Min(SelectedLogLevel.Ordinal, 1));
+            var debugLogLevel = LogLevel.FromOrdinal(Math.Min(LogLevel.Ordinal, 1));
             LogManager.Configuration.FindRuleByName("debug")?.SetLoggingLevels(debugLogLevel, LogLevel.Fatal);
         }
 
@@ -112,8 +111,9 @@ internal sealed class GeneralSettingsViewModel : Screen, IHandle<SettingsMessage
         {
             settings[nameof(AlwaysOnTop)] = AlwaysOnTop;
             settings[nameof(ErrorDisplayType)] = JToken.FromObject(ErrorDisplayType);
-            settings["LogLevel"] = JToken.FromObject(SelectedLogLevel ?? LogLevel.Info);
+            settings[nameof(LogLevel)] = JToken.FromObject(LogLevel ?? LogLevel.Info);
             settings[nameof(EnableUILogging)] = EnableUILogging;
+            settings[nameof(EnableJsonLogging)] = EnableJsonLogging;
             settings[nameof(AllowWindowResize)] = AllowWindowResize;
             settings[nameof(AppOrientation)] = JToken.FromObject(AppOrientation);
             settings[nameof(RememberWindowLocation)] = RememberWindowLocation;
@@ -124,10 +124,12 @@ internal sealed class GeneralSettingsViewModel : Screen, IHandle<SettingsMessage
                 AlwaysOnTop = alwaysOnTop;
             if (settings.TryGetValue<ErrorDisplayType>(nameof(ErrorDisplayType), out var errorDisplayType))
                 ErrorDisplayType = errorDisplayType;
-            if (settings.TryGetValue<LogLevel>("LogLevel", out var logLevel))
-                SelectedLogLevel = logLevel;
+            if (settings.TryGetValue<LogLevel>(nameof(LogLevel), out var logLevel))
+                LogLevel = logLevel;
             if (settings.TryGetValue<bool>(nameof(EnableUILogging), out var enableUILogging))
                 EnableUILogging = enableUILogging;
+            if (settings.TryGetValue<bool>(nameof(EnableJsonLogging), out var enableJsonLogging))
+                EnableJsonLogging = enableJsonLogging;
             if (message.Settings.TryGetValue<bool>(nameof(AllowWindowResize), out var allowWindowResize))
                 AllowWindowResize = allowWindowResize;
             if (settings.TryGetValue<Orientation>(nameof(AppOrientation), out var appOrientation))

@@ -1,4 +1,5 @@
 ﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
 using MultiFunPlayer.UI;
 using Newtonsoft.Json;
@@ -16,7 +17,8 @@ using System.Text.RegularExpressions;
 namespace MultiFunPlayer.MediaSource.ViewModels;
 
 [DisplayName("DeoVR")]
-internal sealed class DeoVRMediaSource(IShortcutManager shortcutManager, IEventAggregator eventAggregator) : AbstractMediaSource(shortcutManager, eventAggregator)
+internal sealed class DeoVRMediaSource(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator)
+    : AbstractMediaSource(shortcutManager, propertyManager, eventAggregator)
 {
     public override ConnectionStatus Status { get; protected set; }
     public bool IsConnected => Status == ConnectionStatus.Connected;
@@ -86,8 +88,7 @@ internal sealed class DeoVRMediaSource(IShortcutManager shortcutManager, IEventA
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(TcpClient client, NetworkStream stream, CancellationToken token)
@@ -102,13 +103,7 @@ internal sealed class DeoVRMediaSource(IShortcutManager shortcutManager, IEventA
                 if (length <= 0)
                 {
                     Logger.Trace("Received \"\" from \"{0}\"", Name);
-
-                    if (playerState != null)
-                    {
-                        PublishMessage(new MediaPathChangedMessage(null));
-                        PublishMessage(new MediaPlayingChangedMessage(false));
-                        playerState = null;
-                    }
+                    ResetState();
 
                     continue;
                 }
@@ -122,16 +117,18 @@ internal sealed class DeoVRMediaSource(IShortcutManager shortcutManager, IEventA
                 try
                 {
                     var document = JObject.Parse(data);
-                    if (document.TryGetValue("path", out var pathToken) && pathToken.TryToObject<string>(out var path))
+                    if (document.TryGetValue("path", out var pathToken) && pathToken.TryToObject<string>(out var path) && !string.IsNullOrWhiteSpace(path))
                     {
-                        if (string.IsNullOrWhiteSpace(path))
-                            path = null;
-
                         if (path != playerState.Path)
                         {
                             PublishMessage(new MediaPathChangedMessage(path));
                             playerState.Path = path;
                         }
+                    }
+                    else
+                    {
+                        ResetState();
+                        continue;
                     }
 
                     if (document.TryGetValue("playerState", out var stateToken) && stateToken.TryToObject<int>(out var state) && state != playerState.State)
@@ -159,6 +156,15 @@ internal sealed class DeoVRMediaSource(IShortcutManager shortcutManager, IEventA
                     }
                 }
                 catch (JsonException) { }
+            }
+
+            void ResetState()
+            {
+                if (playerState == null)
+                    return;
+
+                PublishMessage(new MediaResetMessage());
+                playerState = null;
             }
         }
         catch (OperationCanceledException) { }
@@ -247,6 +253,12 @@ internal sealed class DeoVRMediaSource(IShortcutManager shortcutManager, IEventA
                 Endpoint = endpoint;
         });
         #endregion
+    }
+
+    protected override void RegisterProperties(IPropertyManager p)
+    {
+        base.RegisterProperties(p);
+        p.RegisterProperty($"{Name}::Endpoint", () => Endpoint);
     }
 
     private sealed class PlayerState

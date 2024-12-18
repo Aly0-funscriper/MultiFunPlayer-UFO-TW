@@ -140,7 +140,7 @@
                                                        HorizontalAlignment="Left"
                                                        VerticalAlignment="Center"
                                                        FontWeight="Bold"
-                                                       Text="Sync when:"
+                                                       Text="Sync on:"
                                                        Typography.Capitals="AllSmallCaps"/>
                                             <material:ColorZone DockPanel.Dock="Left"
                                                                 Width="14"
@@ -163,22 +163,37 @@
                                                                    Kind="ExclamationBold"/>
                                             </material:ColorZone>
                                         </DockPanel>
-                                        <DockPanel Margin="0 5 0 0" LastChildFill="False">
+                                        <DockPanel Margin="0 2 0 0" LastChildFill="False">
                                             <TextBlock DockPanel.Dock="Left" Text="Media resource changed:"/>
                                             <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding SyncSettings.SyncOnMediaResourceChanged}"/>
                                         </DockPanel>
 
-                                        <DockPanel Margin="0 5 0 0" LastChildFill="False">
+                                        <DockPanel Margin="0 2 0 0" LastChildFill="False">
+                                            <TextBlock DockPanel.Dock="Left" Text="Script resource changed:"/>
+                                            <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding SyncSettings.SyncOnScriptResourceChanged}"/>
+                                        </DockPanel>
+
+                                        <DockPanel Margin="0 2 0 0" LastChildFill="False">
+                                            <TextBlock DockPanel.Dock="Left" Text="Script start:"/>
+                                            <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding SyncSettings.SyncOnScriptStart}"/>
+                                        </DockPanel>
+
+                                        <DockPanel Margin="0 2 0 0" LastChildFill="False">
+                                            <TextBlock DockPanel.Dock="Left" Text="Script end:"/>
+                                            <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding SyncSettings.SyncOnScriptEnd}"/>
+                                        </DockPanel>
+
+                                        <DockPanel Margin="0 2 0 0" LastChildFill="False">
                                             <TextBlock DockPanel.Dock="Left" Text="Media play/pause:"/>
                                             <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding SyncSettings.SyncOnMediaPlayPause}"/>
                                         </DockPanel>
 
-                                        <DockPanel Margin="0 5 0 0" LastChildFill="False">
-                                            <TextBlock DockPanel.Dock="Left" Text="Seek:"/>
+                                        <DockPanel Margin="0 2 0 0" LastChildFill="False">
+                                            <TextBlock DockPanel.Dock="Left" Text="Media seek:"/>
                                             <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding SyncSettings.SyncOnSeek}"/>
                                         </DockPanel>
 
-                                        <DockPanel Margin="0 5 0 0" LastChildFill="False">
+                                        <DockPanel Margin="0 2 0 0" LastChildFill="False">
                                             <TextBlock DockPanel.Dock="Left" Text="Auto-home start/end:"/>
                                             <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding SyncSettings.SyncOnAutoHomeStartEnd}"/>
                                         </DockPanel>
@@ -741,10 +756,10 @@
                                             </Menu>
 
                                             <ToggleButton Style="{StaticResource MaterialDesignToolBarToggleButton}"
-                                                          Checked="{s:Action OnInvertValueCheckedChanged}"
-                                                          IsChecked="{Binding Value.Settings.InvertValue, Mode=OneWay}"
-                                                          ToolTip="Invert"
-                                                          Unchecked="{s:Action OnInvertValueCheckedChanged}">
+                                                          Checked="{s:Action OnInvertScriptCheckedChanged}"
+                                                          IsChecked="{Binding Value.Settings.InvertScript, Mode=OneWay}"
+                                                          ToolTip="Invert script"
+                                                          Unchecked="{s:Action OnInvertScriptCheckedChanged}">
                                                 <material:PackIcon Width="20"
                                                                    Height="20"
                                                                    Kind="FlipVertical"
@@ -786,11 +801,34 @@
                                                 </material:PopupBox.ToggleContent>
                                                 <Grid Margin="10">
                                                     <StackPanel>
-                                                        <Button Style="{StaticResource MaterialDesignPaperButton}"
-                                                                Margin="0 0 0 15"
-                                                                Click="{s:Action OnBypassAll}"
-                                                                Content="Bypass all"
-                                                                Typography.Capitals="AllSmallCaps"/>
+                                                        <DockPanel Margin="0 0 0 15" LastChildFill="True">
+                                                            <Button DockPanel.Dock="Right"
+                                                                    Style="{StaticResource MaterialDesignPaperButton}"
+                                                                    Width="32"
+                                                                    Padding="0"
+                                                                    Click="{s:Action OnBypassDisableAll}"
+                                                                    ToolTip="Disable all">
+                                                                <Button.IsEnabled>
+                                                                    <MultiBinding Converter="{StaticResource BooleanOrConverter}">
+                                                                        <MultiBinding.Bindings>
+                                                                            <Binding Path="Value.Settings.BypassScript"/>
+                                                                            <Binding Path="Value.Settings.BypassMotionProvider"/>
+                                                                            <Binding Path="Value.Settings.BypassTransition"/>
+                                                                        </MultiBinding.Bindings>
+                                                                    </MultiBinding>
+                                                                </Button.IsEnabled>
+                                                                <material:PackIcon Width="20"
+                                                                                   Height="20"
+                                                                                   Kind="ToggleSwitchOffOutline"/>
+                                                            </Button>
+
+                                                            <Button DockPanel.Dock="Left"
+                                                                    Style="{StaticResource MaterialDesignPaperButton}"
+                                                                    Margin="0 0 10 0"
+                                                                    Click="{s:Action OnBypassEnableAll}"
+                                                                    Content="Bypass all"
+                                                                    Typography.Capitals="AllSmallCaps"/>
+                                                        </DockPanel>
 
                                                         <TextBlock VerticalAlignment="Center"
                                                                    FontSize="12"
