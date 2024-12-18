@@ -84,8 +84,7 @@ internal sealed class OfsMediaSource(IShortcutManager shortcutManager, IProperty
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(ClientWebSocket client, CancellationToken token)
@@ -112,7 +111,10 @@ internal sealed class OfsMediaSource(IShortcutManager shortcutManager, IProperty
                     switch (eventName)
                     {
                         case "media_change":
-                            PublishMessage(new MediaPathChangedMessage(dataToken.TryGetValue<string>("path", out var path) && !string.IsNullOrWhiteSpace(path) ? path : null, ReloadScripts: false));
+                            if (dataToken.TryGetValue<string>("path", out var path) && !string.IsNullOrWhiteSpace(path))
+                                PublishMessage(new MediaPathChangedMessage(path, ReloadScripts: false));
+                            else
+                                PublishMessage(new MediaResetMessage());
                             break;
                         case "play_change":
                             if (dataToken.TryGetValue<bool>("playing", out var isPlaying))
@@ -167,8 +169,7 @@ internal sealed class OfsMediaSource(IShortcutManager shortcutManager, IProperty
 
                             break;
                         case "project_change":
-                            PublishMessage(new MediaPathChangedMessage(null, ReloadScripts: false));
-                            PublishMessage(new MediaPlayingChangedMessage(false));
+                            PublishMessage(new MediaResetMessage());
                             break;
                     }
                 }

@@ -559,7 +559,7 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
 
         MediaResource = resource;
         if (SyncSettings.SyncOnMediaResourceChanged)
-            ResetSync(isSyncing: MediaResource != null);
+            ResetSync(true);
 
         ResetAxes(null);
         if (message.ReloadScripts)
@@ -649,7 +649,16 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
     public void Handle(MediaResetMessage message)
     {
         Logger.Debug("Received {0}", nameof(MediaResetMessage));
+        if (MediaResource == null)
+            return;
+
+        if (MediaResource != null)
+            if (SyncSettings.SyncOnMediaResourceChanged)
+                ResetSync(true);
+
+        ResetAxes(null);
         InvalidateMediaState();
+        InvalidateAxisState(null);
     }
 
     public void Handle(SettingsMessage message)
@@ -996,6 +1005,8 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
 
     private void InvalidateMediaState()
     {
+        Logger.Debug("Invalidating media state");
+
         IsPlaying = false;
         MediaResource = null;
         MediaDuration = double.NaN;
@@ -1343,7 +1354,8 @@ internal sealed class ScriptViewModel : Screen, IDeviceAxisValueProvider, IDispo
     public async void OnOpenMediaPathModifiersDialog(object sender, RoutedEventArgs e)
     {
         await DialogHelper.ShowAsync(new MediaPathModifiersDialog(MediaPathModifiers), "RootDialog");
-        Handle(new MediaPathChangedMessage(MediaResource?.OriginalPath));
+        if (MediaResource != null)
+            Handle(new MediaPathChangedMessage(MediaResource.OriginalPath));
     }
 
     public void OnMapCurrentMediaPathToFile(object sender, RoutedEventArgs e)

@@ -109,8 +109,7 @@ internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IPropert
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(HttpClient client, CancellationToken token)
@@ -145,11 +144,10 @@ internal sealed class EmbyMediaSource(IShortcutManager shortcutManager, IPropert
                 var state = _currentSession?.State;
                 var item = _currentSession?.Item;
 
+                if (item != null && item.Path == null)
+                    item = null;
                 if (item == null && lastItem != null)
-                {
-                    PublishMessage(new MediaPathChangedMessage(null));
-                    PublishMessage(new MediaPlayingChangedMessage(false));
-                }
+                    PublishMessage(new MediaResetMessage());
 
                 if (item?.Path != null)
                 {

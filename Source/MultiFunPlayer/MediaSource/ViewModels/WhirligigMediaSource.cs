@@ -80,7 +80,10 @@ internal sealed class WhirligigMediaSource(IShortcutManager shortcutManager, IPr
                 if (message.Length >= 1 && message[0] == 'C')
                 {
                     var parts = message.Split(' ', 2);
-                    PublishMessage(new MediaPathChangedMessage(parts.Length == 2 && !string.IsNullOrWhiteSpace(parts[1]) ? parts[1].Trim('"') : null));
+                    if (parts.Length == 2 && !string.IsNullOrWhiteSpace(parts[1]))
+                        PublishMessage(new MediaPathChangedMessage(parts[1].Trim('"')));
+                    else
+                        PublishMessage(new MediaResetMessage());
                 }
                 else if (message.Length >= 1 && message[0] == 'S')
                 {
@@ -113,8 +116,7 @@ internal sealed class WhirligigMediaSource(IShortcutManager shortcutManager, IPr
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     public override void HandleSettings(JObject settings, SettingsAction action)

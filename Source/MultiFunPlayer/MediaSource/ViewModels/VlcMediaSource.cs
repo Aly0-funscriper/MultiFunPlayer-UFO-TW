@@ -97,18 +97,17 @@ internal sealed class VlcMediaSource(IShortcutManager shortcutManager, IProperty
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(HttpClient client, int version, CancellationToken token)
     {
-        var statusUri = new Uri($"http://{Endpoint.ToUriString()}/requests/status.json");
-        var playlistUri = new Uri($"http://{Endpoint.ToUriString()}/requests/playlist.json");
-        var playerState = new PlayerState();
-
         try
         {
+            var statusUri = new Uri($"http://{Endpoint.ToUriString()}/requests/status.json");
+            var playlistUri = new Uri($"http://{Endpoint.ToUriString()}/requests/playlist.json");
+            var playerState = default(PlayerState);
+
             using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(200));
             while (await timer.WaitForNextTickAsync(token) && !token.IsCancellationRequested)
             {
@@ -120,10 +119,8 @@ internal sealed class VlcMediaSource(IShortcutManager shortcutManager, IProperty
                 Logger.Trace("Received \"{0}\" from \"{1}\"", statusMessage, Name);
                 var statusDocument = JObject.Parse(statusMessage);
 
-                if (!statusDocument.TryGetValue<int>("currentplid", out var playlistId))
-                    continue;
-
-                bool ShouldResetState() => version switch
+                var hasPlaylistId = statusDocument.TryGetValue<int>("currentplid", out var playlistId);
+                bool ShouldResetState() => !hasPlaylistId || version switch
                 {
                     3 when playlistId < 0 => true,
                     4 when statusDocument.TryGetValue<string>("state", out var state) && string.Equals(state, "stopped", StringComparison.OrdinalIgnoreCase) => true,
@@ -136,6 +133,8 @@ internal sealed class VlcMediaSource(IShortcutManager shortcutManager, IProperty
                     ResetState();
                     continue;
                 }
+
+                playerState ??= new PlayerState();
 
                 var playlistIdChanged = playlistId != playerState.PlaylistId;
                 if (playlistIdChanged)
@@ -208,20 +207,18 @@ internal sealed class VlcMediaSource(IShortcutManager shortcutManager, IProperty
                     playerState.Position = position;
                 }
             }
+
+            void ResetState()
+            {
+                if (playerState == null)
+                    return;
+
+                PublishMessage(new MediaResetMessage());
+                playerState = null;
+            }
         }
         catch (OperationCanceledException e) when (e.InnerException is TimeoutException t) { t.Throw(); }
         catch (OperationCanceledException) { }
-
-        void ResetState()
-        {
-            if (playerState.PlaylistId == null)
-                return;
-
-            playerState = new PlayerState();
-
-            PublishMessage(new MediaPathChangedMessage(null));
-            PublishMessage(new MediaPlayingChangedMessage(false));
-        }
     }
 
     private async Task WriteAsync(HttpClient client, int version, CancellationToken token)

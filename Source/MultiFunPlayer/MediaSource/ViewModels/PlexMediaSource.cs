@@ -114,8 +114,7 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IPropert
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(HttpClient httpClient, CancellationToken token)
@@ -129,12 +128,14 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IPropert
             using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(500));
             while (await timer.WaitForNextTickAsync(token) && !token.IsCancellationRequested)
             {
-                _currentTimeline = await GetCurrentTimelineAsync();
-                if (_currentTimeline == null)
+                var timeline = await GetCurrentTimelineAsync();
+                if (timeline == null)
                 {
                     ResetState();
                     continue;
                 }
+
+                _currentTimeline = timeline;
 
                 var timeAttribute = _currentTimeline.Attributes["time"];
                 var keyAttribute = _currentTimeline.Attributes["key"];
@@ -193,7 +194,7 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IPropert
                 var duration = TimeSpan.FromMilliseconds(int.Parse(durationAttribute.Value));
                 var path = fileAttribute.Value;
 
-                if (string.IsNullOrEmpty(path))
+                if (string.IsNullOrWhiteSpace(path))
                     return false;
 
                 PublishMessage(new MediaPathChangedMessage(path));
@@ -259,10 +260,12 @@ internal sealed class PlexMediaSource(IShortcutManager shortcutManager, IPropert
 
             void ResetState()
             {
+                if (_currentTimeline == null)
+                    return;
+
                 _currentTimeline = null;
                 lastMetadataUri = null;
-                PublishMessage(new MediaPathChangedMessage(null));
-                PublishMessage(new MediaPlayingChangedMessage(false));
+                PublishMessage(new MediaResetMessage());
             }
         }
         catch (OperationCanceledException e) when (e.InnerException is TimeoutException t) { t.Throw(); }

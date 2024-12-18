@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Property;
 using MultiFunPlayer.Script;
 using MultiFunPlayer.Script.Repository;
@@ -155,8 +155,7 @@ internal sealed class InternalMediaSource(ILocalScriptRepository localRepository
         if (IsDisposing)
             return;
 
-        PlayIndex(-1);
-        SetIsPlaying(false);
+        ResetState();
     }
 
     private bool? CheckIndexAndRefresh(int index)
@@ -324,15 +323,14 @@ internal sealed class InternalMediaSource(ILocalScriptRepository localRepository
 
         result.Merge(DeviceAxis.All.Except(result.Keys).ToDictionary(a => a, _ => default(IScriptResource)));
         PublishMessage(new ChangeScriptMessage(result));
+    }
 
-        void ResetState()
-        {
-            _duration = double.NaN;
-            _position = double.NaN;
-            _isPlaying = false;
-            PublishMessage(new ChangeScriptMessage(DeviceAxis.All, null));
-            PublishMessage(new MediaResetMessage());
-        }
+    private void ResetState()
+    {
+        _duration = double.NaN;
+        _position = double.NaN;
+        _isPlaying = false;
+        PublishMessage(new MediaResetMessage());
     }
 
     private void SetDuration(double duration)

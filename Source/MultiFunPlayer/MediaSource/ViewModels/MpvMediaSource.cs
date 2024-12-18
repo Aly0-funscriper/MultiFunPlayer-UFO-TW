@@ -144,8 +144,7 @@ internal sealed class MpvMediaSource(IShortcutManager shortcutManager, IProperty
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(NamedPipeClientStream client, StreamReader reader, CancellationToken token)
@@ -175,7 +174,10 @@ internal sealed class MpvMediaSource(IShortcutManager shortcutManager, IProperty
                         switch (propertyName)
                         {
                             case "path":
-                                PublishMessage(new MediaPathChangedMessage(dataToken.TryToObject<string>(out var path) && !string.IsNullOrWhiteSpace(path) ? path : null));
+                                if (dataToken.TryToObject<string>(out var path) && !string.IsNullOrWhiteSpace(path))
+                                    PublishMessage(new MediaPathChangedMessage(path));
+                                else
+                                    PublishMessage(new MediaResetMessage());
                                 break;
                             case "pause":
                                 if (dataToken.TryToObject<string>(out var paused))

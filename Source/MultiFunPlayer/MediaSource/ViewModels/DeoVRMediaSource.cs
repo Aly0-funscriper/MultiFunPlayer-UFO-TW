@@ -88,8 +88,7 @@ internal sealed class DeoVRMediaSource(IShortcutManager shortcutManager, IProper
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(TcpClient client, NetworkStream stream, CancellationToken token)
@@ -104,13 +103,7 @@ internal sealed class DeoVRMediaSource(IShortcutManager shortcutManager, IProper
                 if (length <= 0)
                 {
                     Logger.Trace("Received \"\" from \"{0}\"", Name);
-
-                    if (playerState != null)
-                    {
-                        PublishMessage(new MediaPathChangedMessage(null));
-                        PublishMessage(new MediaPlayingChangedMessage(false));
-                        playerState = null;
-                    }
+                    ResetState();
 
                     continue;
                 }
@@ -124,16 +117,18 @@ internal sealed class DeoVRMediaSource(IShortcutManager shortcutManager, IProper
                 try
                 {
                     var document = JObject.Parse(data);
-                    if (document.TryGetValue("path", out var pathToken) && pathToken.TryToObject<string>(out var path))
+                    if (document.TryGetValue("path", out var pathToken) && pathToken.TryToObject<string>(out var path) && !string.IsNullOrWhiteSpace(path))
                     {
-                        if (string.IsNullOrWhiteSpace(path))
-                            path = null;
-
                         if (path != playerState.Path)
                         {
                             PublishMessage(new MediaPathChangedMessage(path));
                             playerState.Path = path;
                         }
+                    }
+                    else
+                    {
+                        ResetState();
+                        continue;
                     }
 
                     if (document.TryGetValue("playerState", out var stateToken) && stateToken.TryToObject<int>(out var state) && state != playerState.State)
@@ -161,6 +156,15 @@ internal sealed class DeoVRMediaSource(IShortcutManager shortcutManager, IProper
                     }
                 }
                 catch (JsonException) { }
+            }
+
+            void ResetState()
+            {
+                if (playerState == null)
+                    return;
+
+                PublishMessage(new MediaResetMessage());
+                playerState = null;
             }
         }
         catch (OperationCanceledException) { }

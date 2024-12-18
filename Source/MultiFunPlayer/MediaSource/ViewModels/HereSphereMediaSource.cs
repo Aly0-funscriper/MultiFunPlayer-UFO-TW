@@ -87,8 +87,7 @@ internal sealed class HereSphereMediaSource(IShortcutManager shortcutManager, IP
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(TcpClient client, NetworkStream stream, CancellationToken token)
@@ -103,13 +102,7 @@ internal sealed class HereSphereMediaSource(IShortcutManager shortcutManager, IP
                 if (length <= 0)
                 {
                     Logger.Trace("Received \"\" from \"{0}\"", Name);
-
-                    if (playerState != null)
-                    {
-                        PublishMessage(new MediaPathChangedMessage(null));
-                        PublishMessage(new MediaPlayingChangedMessage(false));
-                        playerState = null;
-                    }
+                    ResetState();
 
                     continue;
                 }
@@ -126,7 +119,10 @@ internal sealed class HereSphereMediaSource(IShortcutManager shortcutManager, IP
                     if (document.TryGetValue("resource", out var resourceToken) && resourceToken.TryToObject<string>(out var resource))
                     {
                         if (string.IsNullOrWhiteSpace(resource))
-                            resource = null;
+                        {
+                            ResetState();
+                            continue;
+                        }
 
                         if (resource != playerState.Path)
                         {
@@ -142,13 +138,21 @@ internal sealed class HereSphereMediaSource(IShortcutManager shortcutManager, IP
                     else if (document.TryGetValue("path", out var pathToken) && pathToken.TryToObject<string>(out var path))
                     {
                         if (string.IsNullOrWhiteSpace(path))
-                            path = null;
+                        {
+                            ResetState();
+                            continue;
+                        }
 
                         if (path != playerState.Path)
                         {
                             PublishMessage(new MediaPathChangedMessage(path));
                             playerState.Path = path;
                         }
+                    }
+                    else
+                    {
+                        ResetState();
+                        continue;
                     }
 
                     if (document.TryGetValue("playerState", out var stateToken) && stateToken.TryToObject<int>(out var state) && state != playerState.State)
@@ -176,6 +180,15 @@ internal sealed class HereSphereMediaSource(IShortcutManager shortcutManager, IP
                     }
                 }
                 catch (JsonException) { }
+            }
+
+            void ResetState()
+            {
+                if (playerState == null)
+                    return;
+
+                PublishMessage(new MediaResetMessage());
+                playerState = null;
             }
         }
         catch (OperationCanceledException) { }

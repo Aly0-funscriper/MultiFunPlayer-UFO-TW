@@ -91,16 +91,15 @@ internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IPr
         if (IsDisposing)
             return;
 
-        PublishMessage(new MediaPathChangedMessage(null));
-        PublishMessage(new MediaPlayingChangedMessage(false));
+        PublishMessage(new MediaResetMessage());
     }
 
     private async Task ReadAsync(Process process, CancellationToken token)
     {
-        var playerState = new PlayerState();
-
         try
         {
+            var playerState = default(PlayerState);
+
             var hwndSource = default(HwndSource);
             await Execute.OnUIThreadAsync(() => hwndSource = PresentationSource.FromVisual(Application.Current.MainWindow) as HwndSource);
 
@@ -117,12 +116,13 @@ internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IPr
                 }
 
                 var path = await GetValueStringAsync(window, PlayerCommand.GetFilename, token);
-                if (path == null)
+                if (string.IsNullOrWhiteSpace(path))
                 {
                     ResetState();
                     continue;
                 }
 
+                playerState ??= new PlayerState();
                 var duration = GetValueLong(window, PlayerCommand.GetTotalTime);
                 var position = GetValueLong(window, PlayerCommand.GetCurrentTime);
 
@@ -193,19 +193,17 @@ internal sealed class PotPlayerMediaSource(IShortcutManager shortcutManager, IPr
                     return IntPtr.Zero;
                 }
             }
+
+            void ResetState()
+            {
+                if (playerState == null)
+                    return;
+
+                PublishMessage(new MediaResetMessage());
+                playerState = null;
+            }
         }
         catch (OperationCanceledException) { }
-
-        void ResetState()
-        {
-            if (playerState.Path == null)
-                return;
-
-            playerState = new PlayerState();
-
-            PublishMessage(new MediaPathChangedMessage(null));
-            PublishMessage(new MediaPlayingChangedMessage(false));
-        }
     }
 
     private async Task WriteAsync(Process process, CancellationToken token)
