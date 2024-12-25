@@ -53,12 +53,6 @@ internal sealed class PluginManager : IPluginManager
             var newDirectory = new DirectoryInfo(e.FullPath);
             foreach (var pluginFile in newDirectory.SafeEnumerateFiles("*.cs", IOUtils.CreateEnumerationOptions(true)))
                 AddContainer(pluginFile);
-
-            static bool IsBasePathOf(string basePath, string subPath)
-            {
-                var relativePath = Path.GetRelativePath(subPath.Replace('\\', '/'), basePath.Replace('\\', '/'));
-                return relativePath == "." || relativePath.EndsWith("..");
-            }
         }
         else if (File.Exists(e.OldFullPath) || File.Exists(e.FullPath))
         {
@@ -69,18 +63,34 @@ internal sealed class PluginManager : IPluginManager
                 RemoveContainer(new FileInfo(csOldFullPath));
             if (TryChangeExtension(e.FullPath, ".xaml", ".cs", out var csFullPath))
                 AddContainer(new FileInfo(csFullPath));
-
-            static bool TryChangeExtension(string path, string extensionFrom, string extensionTo, out string result)
-                => !string.IsNullOrWhiteSpace(result = string.Equals(Path.GetExtension(path), extensionFrom, StringComparison.OrdinalIgnoreCase)
-                                                        ? Path.ChangeExtension(path, extensionTo) : null);
         }
     }
 
     private void OnWatcherDeleted(object sender, FileSystemEventArgs e)
     {
         Logger.Trace("Received watcher deleted event [Path: \"{0}\"", e.FullPath);
+
+        foreach (var container in _containers)
+            if (IsBasePathOf(e.FullPath, container.File.DirectoryName))
+                RemoveContainer(container.File);
+
         RemoveContainer(new FileInfo(e.FullPath));
+
+        if (TryChangeExtension(e.FullPath, ".xaml", ".cs", out var csFullPath))
+            foreach (var container in _containers)
+                if (_comparer.Equals(container.File, new FileInfo(csFullPath)))
+                    container.QueueCompile();
     }
+
+    private bool IsBasePathOf(string basePath, string subPath)
+    {
+        var relativePath = Path.GetRelativePath(subPath.Replace('\\', '/'), basePath.Replace('\\', '/'));
+        return relativePath == "." || relativePath.EndsWith("..");
+    }
+
+    private bool TryChangeExtension(string path, string extensionFrom, string extensionTo, out string result)
+        => !string.IsNullOrWhiteSpace(result = string.Equals(Path.GetExtension(path), extensionFrom, StringComparison.OrdinalIgnoreCase)
+                                                ? Path.ChangeExtension(path, extensionTo) : null);
 
     private void OnWatcherCreated(object sender, FileSystemEventArgs e)
     {
