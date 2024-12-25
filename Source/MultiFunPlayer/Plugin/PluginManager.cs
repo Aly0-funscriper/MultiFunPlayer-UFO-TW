@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using NLog;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -82,16 +82,6 @@ internal sealed class PluginManager : IPluginManager
                     container.QueueCompile();
     }
 
-    private bool IsBasePathOf(string basePath, string subPath)
-    {
-        var relativePath = Path.GetRelativePath(subPath.Replace('\\', '/'), basePath.Replace('\\', '/'));
-        return relativePath == "." || relativePath.EndsWith("..");
-    }
-
-    private bool TryChangeExtension(string path, string extensionFrom, string extensionTo, out string result)
-        => !string.IsNullOrWhiteSpace(result = string.Equals(Path.GetExtension(path), extensionFrom, StringComparison.OrdinalIgnoreCase)
-                                                ? Path.ChangeExtension(path, extensionTo) : null);
-
     private void OnWatcherCreated(object sender, FileSystemEventArgs e)
     {
         Logger.Trace("Received watcher created event [Path: \"{0}\"", e.FullPath);
@@ -112,6 +102,16 @@ internal sealed class PluginManager : IPluginManager
                         container.QueueCompile();
         }
     }
+
+    private bool IsBasePathOf(string basePath, string subPath)
+    {
+        var relativePath = Path.GetRelativePath(subPath.Replace('\\', '/'), basePath.Replace('\\', '/'));
+        return relativePath == "." || relativePath.EndsWith("..");
+    }
+
+    private bool TryChangeExtension(string path, string extensionFrom, string extensionTo, out string result)
+        => !string.IsNullOrWhiteSpace(result = string.Equals(Path.GetExtension(path), extensionFrom, StringComparison.OrdinalIgnoreCase)
+                                                ? Path.ChangeExtension(path, extensionTo) : null);
 
     private void RemoveContainer(FileInfo fileInfo)
     {
