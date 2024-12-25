@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using NLog;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -109,6 +109,17 @@ internal sealed class PluginManager : IPluginManager
         return relativePath == "." || relativePath.EndsWith("..");
     }
 
+    private int GetPathDepth(string basePath, string subPath)
+    {
+        var relativePath = Path.GetRelativePath(subPath.Replace('\\', '/'), basePath.Replace('\\', '/'));
+        if (relativePath.AsSpan().IndexOfAnyExcept("./\\") >= 0)
+            return -1;
+        if (relativePath == ".")
+            return 0;
+
+        return relativePath.Count(c => c is '/' or '\\') + 1;
+    }
+
     private bool TryChangeExtension(string path, string extensionFrom, string extensionTo, out string result)
         => !string.IsNullOrWhiteSpace(result = string.Equals(Path.GetExtension(path), extensionFrom, StringComparison.OrdinalIgnoreCase)
                                                 ? Path.ChangeExtension(path, extensionTo) : null);
@@ -134,6 +145,9 @@ internal sealed class PluginManager : IPluginManager
             return;
 
         if (_containers.Any(c => _comparer.Equals(c.File, fileInfo)))
+            return;
+
+        if (GetPathDepth(_watcher.Path, fileInfo.FullName) is not (1 or 2))
             return;
 
         Logger.Debug("Adding container [Path: \"{0}\"", fileInfo);
