@@ -95,12 +95,22 @@ internal sealed class PluginManager : IPluginManager
     private void OnWatcherCreated(object sender, FileSystemEventArgs e)
     {
         Logger.Trace("Received watcher created event [Path: \"{0}\"", e.FullPath);
-        AddContainer(new FileInfo(e.FullPath));
 
-        if (TryChangeExtension(e.FullPath, ".xaml", ".cs", out var csFullPath))
-            foreach (var container in _containers)
-                if (_comparer.Equals(container.File, new FileInfo(csFullPath)))
-                    container.QueueCompile();
+        if (Directory.Exists(e.FullPath))
+        {
+            var newDirectory = new DirectoryInfo(e.FullPath);
+            foreach (var pluginFile in newDirectory.SafeEnumerateFiles("*.cs", IOUtils.CreateEnumerationOptions(true)))
+                AddContainer(pluginFile);
+        }
+        else if (File.Exists(e.FullPath))
+        {
+            AddContainer(new FileInfo(e.FullPath));
+
+            if (TryChangeExtension(e.FullPath, ".xaml", ".cs", out var csFullPath))
+                foreach (var container in _containers)
+                    if (_comparer.Equals(container.File, new FileInfo(csFullPath)))
+                        container.QueueCompile();
+        }
     }
 
     private void RemoveContainer(FileInfo fileInfo)
