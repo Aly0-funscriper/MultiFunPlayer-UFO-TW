@@ -96,6 +96,11 @@ internal sealed class PluginManager : IPluginManager
     {
         Logger.Trace("Received watcher created event [Path: \"{0}\"", e.FullPath);
         AddContainer(new FileInfo(e.FullPath));
+
+        if (TryChangeExtension(e.FullPath, ".xaml", ".cs", out var csFullPath))
+            foreach (var container in _containers)
+                if (_comparer.Equals(container.File, new FileInfo(csFullPath)))
+                    container.QueueCompile();
     }
 
     private void RemoveContainer(FileInfo fileInfo)
