@@ -1,11 +1,11 @@
 ﻿namespace MultiFunPlayer.Input.TCode;
 
-internal sealed record TCodeButtonGestureDescriptor(string Button) : ISimpleInputGestureDescriptor
+internal sealed record TCodeButtonGestureDescriptor(string Button) : IButtonInputGestureDescriptor
 {
     public override string ToString() => $"[TCode Button: {Button}]";
 }
 
-internal sealed class TCodeButtonGesture(TCodeButtonGestureDescriptor descriptor, bool state) : AbstractSimpleInputGesture(descriptor, state)
+internal sealed class TCodeButtonGesture(TCodeButtonGestureDescriptor descriptor, bool state) : AbstractButtonInputGesture(descriptor, state)
 {
     public string Button => descriptor.Button;
 

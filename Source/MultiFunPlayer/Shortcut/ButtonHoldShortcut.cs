@@ -4,8 +4,8 @@ using System.ComponentModel;
 namespace MultiFunPlayer.Shortcut;
 
 [DisplayName("Button Hold")]
-internal sealed class ButtonHoldShortcut(IShortcutActionRunner actionRunner, ISimpleInputGestureDescriptor gesture)
-    : AbstractShortcut<ISimpleInputGesture, ISimpleInputGestureData>(actionRunner, gesture)
+internal sealed class ButtonHoldShortcut(IShortcutActionRunner actionRunner, IButtonInputGestureDescriptor gesture)
+    : AbstractShortcut<IButtonInputGesture, IEmptyInputGestureData>(actionRunner, gesture)
 {
     public int MinimumHoldDuration { get; set; } = 1000;
     public int MaximumHoldDuration { get; set; } = -1;
@@ -13,14 +13,14 @@ internal sealed class ButtonHoldShortcut(IShortcutActionRunner actionRunner, ISi
 
     private int _pressTime;
 
-    protected override void Update(ISimpleInputGesture gesture)
+    protected override void Update(IButtonInputGesture gesture)
     {
         if (gesture.State && _pressTime == 0)
         {
             _pressTime = Environment.TickCount;
 
             if (InvokeType == ButtonHoldInvokeType.WhileHolding)
-                Delay(MinimumHoldDuration, () => Invoke(SimpleInputGestureData.Default));
+                Delay(MinimumHoldDuration, () => Invoke(EmptyInputGestureData.Default));
         }
         else if (!gesture.State && _pressTime > 0)
         {
@@ -38,7 +38,7 @@ internal sealed class ButtonHoldShortcut(IShortcutActionRunner actionRunner, ISi
                 if (MaximumHoldDuration > MinimumHoldDuration && duration > MaximumHoldDuration)
                     return;
 
-                Invoke(SimpleInputGestureData.Default);
+                Invoke(EmptyInputGestureData.Default);
             }
         }
     }

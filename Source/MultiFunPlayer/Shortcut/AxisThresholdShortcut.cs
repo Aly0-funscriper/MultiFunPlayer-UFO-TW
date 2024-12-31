@@ -6,7 +6,7 @@ namespace MultiFunPlayer.Shortcut;
 
 [DisplayName("Axis Threshold")]
 internal sealed class AxisThresholdShortcut(IShortcutActionRunner actionRunner, IAxisInputGestureDescriptor gesture)
-    : AbstractShortcut<IAxisInputGesture, ISimpleInputGestureData>(actionRunner, gesture)
+    : AbstractShortcut<IAxisInputGesture, IEmptyInputGestureData>(actionRunner, gesture)
 {
     public double Threshold { get; set; } = 0.5;
     public AxisThresholdTriggerMode TriggerMode { get; set; } = AxisThresholdTriggerMode.Rising;
@@ -27,7 +27,7 @@ internal sealed class AxisThresholdShortcut(IShortcutActionRunner actionRunner, 
         if (!didTrigger)
             return;
 
-        Invoke(SimpleInputGestureData.Default);
+        Invoke(EmptyInputGestureData.Default);
     }
 }
 

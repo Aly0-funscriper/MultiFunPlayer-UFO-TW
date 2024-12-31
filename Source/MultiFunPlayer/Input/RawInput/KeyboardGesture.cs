@@ -2,7 +2,7 @@
 
 namespace MultiFunPlayer.Input.RawInput;
 
-internal sealed record KeyboardGestureDescriptor : ISimpleInputGestureDescriptor
+internal sealed record KeyboardGestureDescriptor : IButtonInputGestureDescriptor
 {
     private static readonly IEqualityComparer<SortedSet<Key>> _comparer = SortedSet<Key>.CreateSetComparer();
 
@@ -16,7 +16,7 @@ internal sealed record KeyboardGestureDescriptor : ISimpleInputGestureDescriptor
     public override string ToString() => $"[Keyboard Keys: {string.Join(", ", Keys)}]";
 }
 
-internal sealed class KeyboardGesture(KeyboardGestureDescriptor descriptor, bool state) : AbstractSimpleInputGesture(descriptor, state)
+internal sealed class KeyboardGesture(KeyboardGestureDescriptor descriptor, bool state) : AbstractButtonInputGesture(descriptor, state)
 {
     public IReadOnlyCollection<Key> Keys => descriptor.Keys;
 

@@ -2,12 +2,12 @@
 
 namespace MultiFunPlayer.Input.RawInput;
 
-internal sealed record MouseButtonGestureDescriptor(MouseButton Button) : ISimpleInputGestureDescriptor
+internal sealed record MouseButtonGestureDescriptor(MouseButton Button) : IButtonInputGestureDescriptor
 {
     public override string ToString() => $"[Mouse Button: {Button}]";
 }
 
-internal sealed class MouseButtonGesture(MouseButtonGestureDescriptor descriptor, bool state) : AbstractSimpleInputGesture(descriptor, state)
+internal sealed class MouseButtonGesture(MouseButtonGestureDescriptor descriptor, bool state) : AbstractButtonInputGesture(descriptor, state)
 {
     public MouseButton Button => descriptor.Button;
 

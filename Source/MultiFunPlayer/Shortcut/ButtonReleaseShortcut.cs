@@ -4,14 +4,14 @@ using System.ComponentModel;
 namespace MultiFunPlayer.Shortcut;
 
 [DisplayName("Button Release")]
-internal sealed class ButtonReleaseShortcut(IShortcutActionRunner actionRunner, ISimpleInputGestureDescriptor gesture)
-    : AbstractShortcut<ISimpleInputGesture, ISimpleInputGestureData>(actionRunner, gesture)
+internal sealed class ButtonReleaseShortcut(IShortcutActionRunner actionRunner, IButtonInputGestureDescriptor gesture)
+    : AbstractShortcut<IButtonInputGesture, IEmptyInputGestureData>(actionRunner, gesture)
 {
     private bool _lastPressed;
 
     public bool HandleRepeating { get; set; } = false;
 
-    protected override void Update(ISimpleInputGesture gesture)
+    protected override void Update(IButtonInputGesture gesture)
     {
         var wasReleased = _lastPressed && !gesture.State;
         _lastPressed = gesture.State;
@@ -19,6 +19,6 @@ internal sealed class ButtonReleaseShortcut(IShortcutActionRunner actionRunner, 
             return;
 
         if (HandleRepeating || wasReleased)
-            Invoke(SimpleInputGestureData.Default);
+            Invoke(EmptyInputGestureData.Default);
     }
 }

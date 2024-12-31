@@ -5,7 +5,7 @@ internal interface IInputGesture
     IInputGestureDescriptor Descriptor { get; }
 }
 
-internal interface ISimpleInputGesture : IInputGesture
+internal interface IButtonInputGesture : IInputGesture
 {
     bool State { get; }
 }
@@ -17,12 +17,12 @@ internal interface IAxisInputGesture : IInputGesture
     public double DeltaTime { get; }
 }
 
-internal abstract class AbstractSimpleInputGesture(ISimpleInputGestureDescriptor descriptor, bool state) : ISimpleInputGesture
+internal abstract class AbstractButtonInputGesture(IButtonInputGestureDescriptor descriptor, bool state) : IButtonInputGesture
 {
     public IInputGestureDescriptor Descriptor { get; } = descriptor;
     public bool State { get; } = state;
 
-    public override bool Equals(object obj) => obj is ISimpleInputGesture gesture && Descriptor.Equals(gesture.Descriptor);
+    public override bool Equals(object obj) => obj is IButtonInputGesture gesture && Descriptor.Equals(gesture.Descriptor);
     public override int GetHashCode() => HashCode.Combine(Descriptor);
 }
 

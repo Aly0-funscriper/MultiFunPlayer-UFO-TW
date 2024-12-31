@@ -1,7 +1,7 @@
 ﻿namespace MultiFunPlayer.Input;
 
 public interface IInputGestureData;
-public interface ISimpleInputGestureData : IInputGestureData;
+public interface IEmptyInputGestureData : IInputGestureData;
 public interface IAxisInputGestureData : IInputGestureData
 {
     double ValueOrDelta { get; }
@@ -12,9 +12,9 @@ public interface IAxisInputGestureData : IInputGestureData
     public double ApplyTo(double value, double deltaModifier = 1);
 }
 
-internal sealed record SimpleInputGestureData : ISimpleInputGestureData
+internal sealed record EmptyInputGestureData : IEmptyInputGestureData
 {
-    public static readonly SimpleInputGestureData Default = new();
+    public static readonly EmptyInputGestureData Default = new();
 }
 
 internal sealed record AxisInputGestureData : IAxisInputGestureData
