@@ -144,6 +144,14 @@
             </DockPanel>
         </DataTemplate>
 
+        <DataTemplate DataType="{x:Type shortcut:ToggleEnableShortcut}">
+            <DockPanel LastChildFill="False"/>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type shortcut:ToggleDisableShortcut}">
+            <DockPanel LastChildFill="False"/>
+        </DataTemplate>
+
         <DataTemplate DataType="{x:Type shortcut:AxisDriveShortcut}">
             <DockPanel LastChildFill="False">
                 <DockPanel DockPanel.Dock="Top" LastChildFill="False">
