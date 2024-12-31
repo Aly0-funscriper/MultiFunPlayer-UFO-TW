@@ -15,7 +15,9 @@ internal sealed class ShortcutConverter(IShortcutFactory shortcutFactory) : Json
     {
         var o = JToken.ReadFrom(reader) as JObject;
 
-        var gesture = o[nameof(IShortcut.Gesture)].ToObject<TypedValue>();
+        if (!o[nameof(IShortcut.Gesture)].TryToObject<TypedValue>(out var gesture))
+            throw new JsonReaderException("Failed to instanciate gesture descriptor");
+
         var instance = shortcutFactory.CreateShortcut(o.GetTypeProperty(), (IInputGestureDescriptor)gesture.Value);
 
         o.Remove(nameof(IShortcut.Gesture));

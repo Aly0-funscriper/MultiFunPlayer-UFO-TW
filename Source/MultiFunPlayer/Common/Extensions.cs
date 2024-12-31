@@ -36,8 +36,18 @@ public static class JsonExtensions
             if (token.Type == JTokenType.Null)
                 return false;
 
-            value = token.ToObject<T>(serializer);
-            return value != null;
+#pragma warning disable CA2263 // Prefer generic overload when type is known
+            if (token.ToObject(typeof(T), serializer) is T result)
+            {
+                value = result;
+                return true;
+            }
+            else
+            {
+                value = default;
+                return false;
+            }
+#pragma warning restore CA2263 // Prefer generic overload when type is known
         }
         catch (JsonException)
         {
