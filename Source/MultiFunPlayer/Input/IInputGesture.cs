@@ -1,22 +1,22 @@
 ﻿namespace MultiFunPlayer.Input;
 
-internal interface IInputGesture
+public interface IInputGesture
 {
     IInputGestureDescriptor Descriptor { get; }
 }
 
-internal interface IButtonInputGesture : IInputGesture
+public interface IButtonInputGesture : IInputGesture
 {
     bool State { get; }
 }
 
-internal interface IToggleInputGesture : IInputGesture
+public interface IToggleInputGesture : IInputGesture
 {
     bool State { get; }
     bool IsInitialState { get; }
 }
 
-internal interface IAxisInputGesture : IInputGesture
+public interface IAxisInputGesture : IInputGesture
 {
     public double Value { get; }
     public double Delta { get; }
