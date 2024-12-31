@@ -2,6 +2,13 @@
 
 public interface IInputGestureData;
 public interface IEmptyInputGestureData : IInputGestureData;
+
+public interface IToggleInputGestureData : IInputGestureData
+{
+    bool State { get; }
+    bool IsInitialState { get; }
+}
+
 public interface IAxisInputGestureData : IInputGestureData
 {
     double ValueOrDelta { get; }
@@ -15,6 +22,20 @@ public interface IAxisInputGestureData : IInputGestureData
 internal sealed record EmptyInputGestureData : IEmptyInputGestureData
 {
     public static readonly EmptyInputGestureData Default = new();
+}
+
+internal sealed record ToggleInputGestureData : IToggleInputGestureData
+{
+    public bool State { get; }
+    public bool IsInitialState { get; }
+
+    private ToggleInputGestureData(bool state, bool isInitialState)
+    {
+        State = state;
+        IsInitialState = isInitialState;
+    }
+
+    internal static ToggleInputGestureData FromGesture(IToggleInputGesture gesture) => new(gesture.State, gesture.IsInitialState);
 }
 
 internal sealed record AxisInputGestureData : IAxisInputGestureData

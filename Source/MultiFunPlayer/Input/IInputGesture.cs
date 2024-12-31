@@ -10,6 +10,12 @@ internal interface IButtonInputGesture : IInputGesture
     bool State { get; }
 }
 
+internal interface IToggleInputGesture : IInputGesture
+{
+    bool State { get; }
+    bool IsInitialState { get; }
+}
+
 internal interface IAxisInputGesture : IInputGesture
 {
     public double Value { get; }
@@ -23,6 +29,16 @@ internal abstract class AbstractButtonInputGesture(IButtonInputGestureDescriptor
     public bool State { get; } = state;
 
     public override bool Equals(object obj) => obj is IButtonInputGesture gesture && Descriptor.Equals(gesture.Descriptor);
+    public override int GetHashCode() => HashCode.Combine(Descriptor);
+}
+
+internal abstract class AbstractToggleInputGesture(IToggleInputGestureDescriptor descriptor, bool state, bool isInitialState) : IToggleInputGesture
+{
+    public IInputGestureDescriptor Descriptor { get; } = descriptor;
+    public bool State { get; } = state;
+    public bool IsInitialState { get; } = isInitialState;
+
+    public override bool Equals(object obj) => obj is IToggleInputGesture gesture && Descriptor.Equals(gesture.Descriptor);
     public override int GetHashCode() => HashCode.Combine(Descriptor);
 }
 

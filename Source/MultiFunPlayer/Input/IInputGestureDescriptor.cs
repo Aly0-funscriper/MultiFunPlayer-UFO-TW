@@ -2,4 +2,5 @@
 
 internal interface IInputGestureDescriptor;
 internal interface IButtonInputGestureDescriptor : IInputGestureDescriptor;
+internal interface IToggleInputGestureDescriptor : IInputGestureDescriptor;
 internal interface IAxisInputGestureDescriptor : IInputGestureDescriptor;
