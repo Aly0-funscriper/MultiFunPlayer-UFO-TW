@@ -50,7 +50,7 @@ internal sealed class LocalScriptRepository : AbstractScriptRepository, ILocalSc
             AddToFound(foundScripts, EnumerateArchive(Path.Join(sourceDirectory.FullName, $"{mediaWithoutExtension}.zip")));
             AddToFound(foundScripts, sourceDirectory.EnumerateFiles($"{mediaWithoutExtension}.*funscript")
                                                     .OrderBy(i => i.FullName)
-                                                    .Select(FunscriptReader.Default.FromFileInfo));
+                                                    .Select(ReadFromFileInfo));
         }
 
         foreach (var library in ScriptLibraries)
@@ -59,7 +59,7 @@ internal sealed class LocalScriptRepository : AbstractScriptRepository, ILocalSc
             AddToFound(foundScripts, library.EnumerateFiles($"{mediaWithoutExtension}.zip")
                                             .SelectMany(i => EnumerateArchive(i.FullName)));
             AddToFound(foundScripts, library.EnumerateFiles($"{mediaWithoutExtension}.*funscript")
-                                            .Select(FunscriptReader.Default.FromFileInfo));
+                                            .Select(ReadFromFileInfo));
         }
 
         Logger.Debug("Found {0} scripts matching \"{1}\"", foundScripts.Count, mediaName);
@@ -106,9 +106,22 @@ internal sealed class LocalScriptRepository : AbstractScriptRepository, ILocalSc
         {
             foreach (var newResult in newResults)
             {
-                Logger.Debug("Found script [Name: \"{0}\", Source: \"{1}\", IsMultiAxis: {2}]", newResult.Name, newResult.Source, newResult.IsMultiAxis);
-                results.Add(newResult);
+                if (newResult?.IsSuccess != true)
+                {
+                    Logger.Debug("Failed to read script [Name: \"{0}\", Source: \"{1}\"]", newResult?.Name, newResult?.Source);
+                }
+                else
+                {
+                    Logger.Debug("Found script [Name: \"{0}\", Source: \"{1}\", IsMultiAxis: {2}]", newResult.Name, newResult.Source, newResult.IsMultiAxis);
+                    results.Add(newResult);
+                }
             }
+        }
+
+        static ScriptReaderResult ReadFromFileInfo(FileInfo file)
+        {
+            Logger.Debug("Reading file \"{0}\" [Exists: {1}]", file.FullName, file.Exists);
+            return FunscriptReader.Default.FromFileInfo(file);
         }
 
         static IEnumerable<ScriptReaderResult> EnumerateArchive(string archivePath)
@@ -121,6 +134,7 @@ internal sealed class LocalScriptRepository : AbstractScriptRepository, ILocalSc
             foreach (var entry in zip.Entries.Where(e => string.Equals(Path.GetExtension(e.FullName), ".funscript", StringComparison.OrdinalIgnoreCase)))
             {
                 using var stream = entry.Open();
+                Logger.Debug("Reading zip entry \"{0}\"", entry.FullName);
                 yield return FunscriptReader.Default.FromStream(entry.Name, archivePath, stream);
             }
         }
