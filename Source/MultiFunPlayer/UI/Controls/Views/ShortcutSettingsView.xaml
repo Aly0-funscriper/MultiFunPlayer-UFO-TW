@@ -470,49 +470,8 @@
                            material:ShadowAssist.ShadowDepth="Depth1"
                            IsEnabled="{Binding IsCapturingGestures, Converter={StaticResource NotConverter}}">
                 <DockPanel Margin="5">
-                    <DockPanel DockPanel.Dock="Top" LastChildFill="True">
-                        <TextBlock DockPanel.Dock="Left"
-                                   Margin="5 0 10 0"
-                                   VerticalAlignment="Center"
-                                   Text="Shortcut:"/>
-
-                        <Button DockPanel.Dock="Right"
-                                Style="{StaticResource MaterialDesignFlatButton}"
-                                Width="32"
-                                Height="32"
-                                Margin="0"
-                                Padding="0"
-                                VerticalAlignment="Center"
-                                Click="{s:Action AddShortcut}"
-                                Foreground="{DynamicResource MaterialDesignSuccessBrush}"
-                                ToolTip="Add shortcut">
-                            <material:PackIcon Width="28"
-                                               Height="28"
-                                               Kind="Plus"/>
-                            <Button.IsEnabled>
-                                <MultiBinding Converter="{StaticResource BooleanAndConverter}">
-                                    <Binding Converter="{StaticResource InvertedNullableToBooleanConverter}" Path="SelectedShortcutType"/>
-                                    <Binding Converter="{StaticResource InvertedNullableToBooleanConverter}" Path="SelectedCapturedGesture"/>
-                                </MultiBinding>
-                            </Button.IsEnabled>
-                        </Button>
-
-                        <ComboBox DockPanel.Dock="Left"
-                                  ItemsSource="{Binding ShortcutTypes}"
-                                  SelectedItem="{Binding SelectedShortcutType}"
-                                  Margin="0 0 10 0"
-                                  material:TextFieldAssist.HasClearButton="True">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Converter={StaticResource DisplayNameConverter}}"/>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                    </DockPanel>
-
                     <DockPanel DockPanel.Dock="Top"
                                Height="35"
-                               IsEnabled="{Binding SelectedShortcutType, Converter={StaticResource InvertedNullableToBooleanConverter}}"
                                LastChildFill="True">
                         <Button DockPanel.Dock="Right"
                                 Style="{StaticResource MaterialDesignFlatButton}"
@@ -560,7 +519,7 @@
                                                                 Height="24"
                                                                 HorizontalAlignment="Stretch"
                                                                 VerticalAlignment="Stretch"
-                                                                Background="{Binding Converter={StaticResource GestureDescriptorToBrushConverter}}"
+                                                                Background="{Binding Descriptor, Converter={StaticResource GestureDescriptorToBrushConverter}}"
                                                                 CornerRadius="4 0 0 4">
                                                 <material:PackIcon DockPanel.Dock="Left"
                                                                    Width="24"
@@ -568,10 +527,72 @@
                                                                    HorizontalAlignment="Center"
                                                                    VerticalAlignment="Center"
                                                                    Foreground="Black"
-                                                                   Kind="{Binding Converter={StaticResource GestureDescriptorToPackIconConverter}}"/>
+                                                                   Kind="{Binding Descriptor, Converter={StaticResource GestureDescriptorToPackIconConverter}}"/>
                                             </material:ColorZone>
 
-                                            <ContentControl Margin="5 0 0 0" Content="{Binding}"/>
+                                            <ContentControl Margin="5 0 0 0" Content="{Binding Descriptor}"/>
+                                        </StackPanel>
+                                    </material:Card>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </DockPanel>
+
+                    <DockPanel DockPanel.Dock="Top"
+                               Height="35"
+                               LastChildFill="True">
+                        <TextBlock DockPanel.Dock="Left"
+                                   Margin="5 0 10 0"
+                                   VerticalAlignment="Center"
+                                   Text="Shortcut:"/>
+
+                        <Button DockPanel.Dock="Right"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Width="32"
+                                Height="32"
+                                Margin="0"
+                                Padding="0"
+                                VerticalAlignment="Center"
+                                Click="{s:Action AddShortcut}"
+                                Foreground="{DynamicResource MaterialDesignSuccessBrush}"
+                                ToolTip="Add shortcut">
+                            <material:PackIcon Width="28"
+                                               Height="28"
+                                               Kind="Plus"/>
+                            <Button.IsEnabled>
+                                <MultiBinding Converter="{StaticResource BooleanAndConverter}">
+                                    <Binding Converter="{StaticResource InvertedNullableToBooleanConverter}" Path="SelectedShortcutType"/>
+                                    <Binding Converter="{StaticResource InvertedNullableToBooleanConverter}" Path="SelectedCapturedGesture"/>
+                                </MultiBinding>
+                            </Button.IsEnabled>
+                        </Button>
+
+                        <ComboBox DockPanel.Dock="Left"
+                                  ItemsSource="{Binding ShortcutTypes}"
+                                  SelectedItem="{Binding SelectedShortcutType}"
+                                  Margin="0 0 10 0"
+                                  material:TextFieldAssist.HasClearButton="True"
+                                  IsEnabled="{Binding SelectedCapturedGesture, Converter={StaticResource InvertedNullableToBooleanConverter}}">
+                            <ComboBox.ItemContainerStyle>
+                                <Style BasedOn="{StaticResource MaterialDesignComboBoxItemStyle}" TargetType="{x:Type ComboBoxItem}">
+                                    <Setter Property="Padding" Value="5"/>
+                                </Style>
+                            </ComboBox.ItemContainerStyle>
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <material:Card material:ShadowAssist.ShadowDepth="Depth1">
+                                        <StackPanel Orientation="Horizontal">
+                                            <material:ColorZone Width="28"
+                                                                Height="24"
+                                                                HorizontalAlignment="Stretch"
+                                                                VerticalAlignment="Stretch"
+                                                                Background="{Binding DataContext.SelectedCapturedGesture.Descriptor, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Converter={StaticResource GestureDescriptorToBrushConverter}}"
+                                                                CornerRadius="4 0 0 4"/>
+
+                                            <TextBlock Margin="5 0 0 0"
+                                                       VerticalAlignment="Center"
+                                                       Text="{Binding Converter={StaticResource DisplayNameConverter}}"
+                                                       Typography.Capitals="AllSmallCaps"/>
                                         </StackPanel>
                                     </material:Card>
                                 </DataTemplate>

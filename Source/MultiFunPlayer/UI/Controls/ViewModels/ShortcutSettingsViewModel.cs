@@ -35,10 +35,11 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
 
     public bool IsCapturingGestures { get; private set; }
     public double GestureCaptureProgressPercent { get; private set; }
-    public ObservableConcurrentCollection<IInputGestureDescriptor> CapturedGestures { get; }
-    public IInputGestureDescriptor SelectedCapturedGesture { get; set; }
+    public ObservableConcurrentCollection<IInputGesture> CapturedGestures { get; }
+    public IInputGesture SelectedCapturedGesture { get; set; }
 
     public IReadOnlyCollection<Type> ShortcutTypes { get; }
+    public ICollectionView ShortcutTypesView { get; }
     public Type SelectedShortcutType { get; set; }
 
     public ShortcutSettingsViewModel(IShortcutManager shortcutManager, IPropertyManager propertyManager, IShortcutFactory shortcutFactory, IEventAggregator eventAggregator)
@@ -53,6 +54,15 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
 
         CapturedGestures = [];
         ShortcutTypes = [.. ReflectionUtils.FindImplementations<IShortcut>().OrderBy(x => x.GetCustomAttribute<DisplayNameAttribute>().DisplayName)];
+        ShortcutTypesView = CollectionViewSource.GetDefaultView(ShortcutTypes);
+        ShortcutTypesView.Filter = o =>
+        {
+            if (o is not Type type)
+                return false;
+            if (SelectedCapturedGesture == null)
+                return false;
+            return IShortcut.AcceptsGesture(type, SelectedCapturedGesture);
+        };
 
         AvailableActionsView = CollectionViewSource.GetDefaultView(AvailableActions);
         AvailableActionsView.Filter = o =>
@@ -81,12 +91,6 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
             SingleWriter = true
         });
 
-        PropertyChanged += (s, e) =>
-        {
-            if (e.PropertyName is nameof(ActionsFilter) or nameof(SelectedShortcut))
-                AvailableActionsView.Refresh();
-        };
-
         RegisterActions(_shortcutManager);
         RegisterProperties(propertyManager);
     }
@@ -105,9 +109,6 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
         if (IsCapturingGestures)
             return;
 
-        if (SelectedShortcutType == null)
-            return;
-
         var captureDuration = TimeSpan.FromSeconds(5);
         using var captureCancellationSource = new CancellationTokenSource(captureDuration);
         var token = captureCancellationSource.Token;
@@ -119,19 +120,22 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
         GestureCaptureProgressPercent = 0;
 
         var captureEndTime = CurrentTime() + captureDuration;
-        _ = UpdateCaptureProgress();
-        await CaptureGestures();
+        await Task.WhenAll(UpdateCaptureProgress(), CaptureGestures());
 
         GestureCaptureProgressPercent = 100;
         IsCapturingGestures = false;
 
         async Task UpdateCaptureProgress()
         {
-            while (!token.IsCancellationRequested)
+            try
             {
-                GestureCaptureProgressPercent = 100 * MathUtils.Clamp01((captureEndTime - CurrentTime()) / captureDuration);
-                await Task.Delay(100, token);
+                while (!token.IsCancellationRequested)
+                {
+                    GestureCaptureProgressPercent = 100 * MathUtils.Clamp01((captureEndTime - CurrentTime()) / captureDuration);
+                    await Task.Delay(100, token);
+                }
             }
+            catch (OperationCanceledException) { }
         }
 
         async Task CaptureGestures()
@@ -140,11 +144,10 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
             {
                 while (!token.IsCancellationRequested)
                 {
-                    _ = await _gestureChannel.Reader.WaitToReadAsync(token);
                     var gesture = await _gestureChannel.Reader.ReadAsync(token);
-                    if (IShortcut.AcceptsGesture(SelectedShortcutType, gesture) && !CapturedGestures.Contains(gesture.Descriptor))
+                    if (!CapturedGestures.Contains(gesture))
                     {
-                        CapturedGestures.Add(gesture.Descriptor);
+                        CapturedGestures.Add(gesture);
                         captureCancellationSource.CancelAfter(captureDuration);
                         captureEndTime = CurrentTime() + captureDuration;
                     }
@@ -163,7 +166,7 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
         if (SelectedCapturedGesture == null)
             return;
 
-        var shortcut = _shortcutFactory.CreateShortcut(SelectedShortcutType, SelectedCapturedGesture);
+        var shortcut = _shortcutFactory.CreateShortcut(SelectedShortcutType, SelectedCapturedGesture.Descriptor);
         SelectedShortcut = _shortcutManager.AddShortcut(shortcut);
     }
 
@@ -233,14 +236,15 @@ internal sealed class ShortcutSettingsViewModel : Screen, IHandle<SettingsMessag
         configurations.Move(index, index + 1);
     }
 
+    public void OnActionsFilterChanged() => AvailableActionsView.Refresh();
+    public void OnSelectedCapturedGestureChanged() => ShortcutTypesView.Refresh();
+
     public void OnSelectedShortcutChanged()
     {
+        AvailableActionsView.Refresh();
         if (SelectedShortcut == null)
             ActionsFilter = null;
     }
-
-    public void OnSelectedShortcutTypeChanged()
-        => CapturedGestures.Clear();
 
     public void Handle(SettingsMessage message)
     {
