@@ -1,5 +1,6 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using Newtonsoft.Json;
+using NLog;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -82,6 +83,8 @@ public abstract class AbstractTextScriptReader : AbstractScriptReader
 
 public sealed class FunscriptReader : AbstractTextScriptReader
 {
+    private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
+
     public static FunscriptReader Default { get; } = new FunscriptReader();
 
     public override ScriptReaderResult FromStream(string name, string source, TextReader stream)
@@ -93,11 +96,17 @@ public sealed class FunscriptReader : AbstractTextScriptReader
         var hasActions = script.Actions?.Count > 0;
         var hasAxes = script.Axes?.Count > 0;
         if (!hasActions && !hasAxes)
+        {
+            Logger.Trace("No actions found in script [Name: \"{0}\", Source: \"{1}\"]", name, source);
             return ScriptReaderResult.FromFailure();
+        }
 
         var resource = CreateResource(script.Actions);
         if (!hasAxes)
+        {
+            Logger.Trace("Successfully read single-axis script [Name: \"{0}\", Source: \"{1}\"]", name, source);
             return ScriptReaderResult.FromSuccess(name, source, resource);
+        }
 
         var resources = new Dictionary<DeviceAxis, IScriptResource>();
         if (hasActions && DeviceAxis.TryParse("L0", out var strokeAxis))
@@ -111,6 +120,7 @@ public sealed class FunscriptReader : AbstractTextScriptReader
             resources[axis] = CreateResource(scriptAxis.Actions);
         }
 
+        Logger.Trace("Successfully read multi-axis script [Name: {name}, Source: {source}, Axes: \"{list}\"]", name, source, resources.Keys);
         return ScriptReaderResult.FromSuccess(name, source, resources);
 
         IScriptResource CreateResource(List<Action> actions) => new ScriptResource()
@@ -178,6 +188,8 @@ public sealed class FunscriptReader : AbstractTextScriptReader
 
 public sealed class CsvReader : AbstractTextScriptReader
 {
+    private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
+
     public static CsvReader Default { get; } = new CsvReader();
 
     public override ScriptReaderResult FromStream(string name, string source, TextReader stream)
@@ -206,8 +218,12 @@ public sealed class CsvReader : AbstractTextScriptReader
         }
 
         if (keyframes.Count == 0)
+        {
+            Logger.Trace("No keyframes found in script [Name: \"{0}\", Source: \"{1}\"]", name, source);
             return ScriptReaderResult.FromFailure();
+        }
 
+        Logger.Trace("Successfully read script [Name: \"{0}\", Source: \"{1}\"]", name, source);
         return ScriptReaderResult.FromSuccess(name, source, new ScriptResource()
         {
             Name = name,
