@@ -59,22 +59,22 @@ public sealed class KeyframeCollection : IReadOnlyList<Keyframe>
                 return Interpolation.Linear(p0.Position, p0.Value, p1.Position, p1.Value, position);
 
             case InterpolationType.Pchip:
-                {
-                    var pm1 = TakeOrExtrapolate(index - 1, p1, p0);
-                    var pp1 = TakeOrExtrapolate(index + 2, p0, p1);
+            {
+                var pm1 = TakeOrExtrapolate(index - 1, p1, p0);
+                var pp1 = TakeOrExtrapolate(index + 2, p0, p1);
 
-                    return Interpolation.Pchip(pm1.Position, pm1.Value, p0.Position, p0.Value, p1.Position, p1.Value, pp1.Position, pp1.Value, position);
-                }
+                return Interpolation.Pchip(pm1.Position, pm1.Value, p0.Position, p0.Value, p1.Position, p1.Value, pp1.Position, pp1.Value, position);
+            }
 
             case InterpolationType.Makima:
-                {
-                    var pm1 = TakeOrExtrapolate(index - 1, p1, p0);
-                    var pm2 = TakeOrExtrapolate(index - 2, pm1, p1);
-                    var pp1 = TakeOrExtrapolate(index + 2, p0, p1);
-                    var pp2 = TakeOrExtrapolate(index + 3, p1, pp1);
+            {
+                var pm1 = TakeOrExtrapolate(index - 1, p1, p0);
+                var pm2 = TakeOrExtrapolate(index - 2, pm1, p1);
+                var pp1 = TakeOrExtrapolate(index + 2, p0, p1);
+                var pp2 = TakeOrExtrapolate(index + 3, p1, pp1);
 
-                    return Interpolation.Makima(pm2.Position, pm2.Value, pm1.Position, pm1.Value, p0.Position, p0.Value, p1.Position, p1.Value, pp1.Position, pp1.Value, pp2.Position, pp2.Value, position);
-                }
+                return Interpolation.Makima(pm2.Position, pm2.Value, pm1.Position, pm1.Value, p0.Position, p0.Value, p1.Position, p1.Value, pp1.Position, pp1.Value, pp2.Position, pp2.Value, position);
+            }
 
             case InterpolationType.Step:
                 return Interpolation.Step(p0.Position, p0.Value, position);
@@ -139,7 +139,7 @@ public sealed class KeyframeCollection : IReadOnlyList<Keyframe>
     public override int GetHashCode()
     {
         var result = new HashCode();
-        foreach(var item in _items)
+        foreach (var item in _items)
             result.Add(item.GetHashCode());
         return result.ToHashCode();
     }
