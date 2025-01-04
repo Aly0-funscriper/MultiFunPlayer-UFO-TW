@@ -8,6 +8,7 @@ public sealed class KeyframeCollection : IReadOnlyList<Keyframe>
 
     public KeyframeCollection() => _items = [];
     public KeyframeCollection(int capacity) => _items = new List<Keyframe>(capacity);
+    public KeyframeCollection(IEnumerable<Keyframe> collection) => _items = new List<Keyframe>(collection.Order(KeyframePositionComparer.Default).DistinctBy(x => x.Position));
 
     public void Add(Keyframe keyframe) => Add(keyframe.Position, keyframe.Value);
     public void Add(TimeSpan position, double value) => Add(position.TotalSeconds, value);

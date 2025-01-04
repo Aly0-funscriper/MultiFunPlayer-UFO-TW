@@ -8,6 +8,12 @@ public sealed class BookmarkCollection : IReadOnlyList<Bookmark>
 
     public BookmarkCollection() => _items = [];
     public BookmarkCollection(int capacity) => _items = new List<Bookmark>(capacity);
+    public BookmarkCollection(IEnumerable<Bookmark> collection)
+    {
+        _items = [];
+        foreach (var bookmark in collection)
+            Add(bookmark);
+    }
 
     public void Add(Bookmark bookmark) => Add(bookmark.Name, bookmark.Position);
     public void Add(string name, TimeSpan position) => Add(name, position.TotalSeconds);

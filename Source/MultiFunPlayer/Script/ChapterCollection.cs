@@ -8,6 +8,12 @@ public sealed class ChapterCollection : IReadOnlyList<Chapter>
 
     public ChapterCollection() => _items = [];
     public ChapterCollection(int capacity) => _items = new List<Chapter>(capacity);
+    public ChapterCollection(IEnumerable<Chapter> collection)
+    {
+        _items = [];
+        foreach (var chapter in collection)
+            Add(chapter);
+    }
 
     public bool Add(Chapter chapter) => Add(chapter.Name, chapter.StartPosition, chapter.EndPosition);
     public bool Add(string name, TimeSpan startPosition, TimeSpan endPosition) => Add(name, startPosition.TotalSeconds, endPosition.TotalSeconds);
