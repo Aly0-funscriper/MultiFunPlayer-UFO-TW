@@ -260,7 +260,11 @@ internal static partial class PluginCompiler
             PluginBase BuildUpPluginInstance(PluginBase instance)
             {
                 CreateAndBindPluginInstanceView(instance);
-                Container.BuildUp(instance);
+
+                foreach (var property in pluginType.GetProperties(BindingFlags.Instance | BindingFlags.NonPublic)
+                                                   .Where(p => p.GetCustomAttribute<InjectAttribute>() != null))
+                    property.SetValue(instance, Container.Get(property.PropertyType));
+
                 return instance;
             }
 

@@ -8,7 +8,6 @@ using PropertyChanged;
 using Stylet;
 using StyletIoC;
 using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Windows;
 
@@ -258,7 +257,6 @@ public abstract class PluginBase : Screen
 
     protected virtual void OnDispose() { }
 
-    [SuppressMessage("Usage", "CA1816:Dispose methods should call SuppressFinalize", Justification = "Internal dispose")]
     internal void InternalDispose()
     {
         EventAggregator.Unsubscribe(_messageProxy);
@@ -271,15 +269,33 @@ public abstract class PluginBase : Screen
                 foreach (var actionName in _registeredActions)
                     UnregisterAction(actionName);
 
+        Parent = null;
+
         OnDispose();
+
+#pragma warning disable IDE0079 // Remove unnecessary suppression
+#pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
         GC.SuppressFinalize(this);
+#pragma warning restore CA1816 // Dispose methods should call SuppressFinalize
+#pragma warning restore IDE0079 // Remove unnecessary suppression
     }
 
     public virtual void HandleSettings(JObject settings, SettingsAction action)
     {
+        //TODO: any serializing/deserializing of the plugin will prevent the plugin assembly from unloading (JamesNK/Newtonsoft.Json#2253)
+
         if (action == SettingsAction.Saving)
-            settings.MergeAll(JObject.FromObject(this));
+        {
+            var hasSerializebleProperties = GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                                                     .Any(p => p.GetCustomAttribute<JsonPropertyAttribute>() != null);
+
+            if (hasSerializebleProperties)
+                settings.MergeAll(JObject.FromObject(this));
+        }
         else if (action == SettingsAction.Loading)
-            settings.Populate(this);
+        {
+            if (settings.Count != 0)
+                settings.Populate(this);
+        }
     }
 }
