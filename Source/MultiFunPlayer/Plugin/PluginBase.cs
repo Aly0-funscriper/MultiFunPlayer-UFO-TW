@@ -249,8 +249,9 @@ public abstract class PluginBase : Screen
 
     protected virtual void OnInitialize() { }
 
-    internal void InternalInitialize()
+    internal void InternalInitialize(PluginContainer container)
     {
+        Parent = container;
         EventAggregator.Subscribe(_messageProxy);
         OnInitialize();
     }
