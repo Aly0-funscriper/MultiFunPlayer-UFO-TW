@@ -104,6 +104,7 @@ internal static partial class PluginCompiler
                 global using global::Newtonsoft.Json;
                 global using global::Newtonsoft.Json.Linq;
                 global using global::MultiFunPlayer.Common;
+                global using global::MultiFunPlayer.Input;
                 global using global::MultiFunPlayer.Plugin;
                 global using global::MultiFunPlayer.Script;
                 """,
