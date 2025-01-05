@@ -182,7 +182,7 @@ internal static partial class PluginCompiler
             var pluginClasses = syntaxTree.GetRoot()
                                           .DescendantNodes()
                                           .OfType<ClassDeclarationSyntax>()
-                                          .Where(s => s.BaseList.Types.Any(x => string.Equals(x.ToString(), nameof(PluginBase), StringComparison.OrdinalIgnoreCase)))
+                                          .Where(s => s.BaseList?.Types.Any(x => string.Equals(x.ToString(), nameof(PluginBase), StringComparison.OrdinalIgnoreCase)) == true)
                                           .ToList();
 
             if (pluginClasses.Count == 0)
