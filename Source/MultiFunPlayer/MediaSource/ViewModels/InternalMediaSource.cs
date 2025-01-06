@@ -86,7 +86,7 @@ internal sealed class InternalMediaSource(ILocalScriptRepository localRepository
                     while (TryReadMessage(out var message))
                     {
                         if (message is MediaPlayPauseMessage playPauseMessage) { SetIsPlaying(playPauseMessage.ShouldBePlaying); }
-                        else if (message is MediaSeekMessage seekMessage && _currentItem != null) { SetPosition(seekMessage.Position.TotalSeconds); }
+                        else if (message is MediaSeekMessage seekMessage && _currentItem != null) { SetPosition(seekMessage.Position.TotalSeconds, forceSeek: true); }
                         else if (message is MediaChangeSpeedMessage changeSpeedMessage) { SetSpeed(changeSpeedMessage.Speed); }
                         else if (message is MediaChangePathMessage changePathMessage)
                         {
@@ -131,7 +131,7 @@ internal sealed class InternalMediaSource(ILocalScriptRepository localRepository
                     if (_position > _duration)
                     {
                         if (IsLooping)
-                            SetPosition(0);
+                            SetPosition(0, forceSeek: true);
                         else if (IsShuffling)
                             PlayRandom();
                         else
