@@ -190,12 +190,11 @@ internal static partial class PluginCompiler
             if (pluginClasses.Count > 1)
                 return PluginCompilationResult.FromFailure(context, new PluginCompileException("Found more than one class inheriting PluginBase"));
 
-            var pluginConstructors = syntaxTree.GetRoot()
-                                               .DescendantNodes()
-                                               .OfType<ConstructorDeclarationSyntax>();
-
-            if (pluginConstructors.Any())
-                return PluginCompilationResult.FromFailure(context, new PluginCompileException("Constructors are not allowed, use OnInitialize instead"));
+            var pluginHasConstructors = pluginClasses[0].DescendantNodes()
+                                                        .OfType<ConstructorDeclarationSyntax>()
+                                                        .Any();
+            if (pluginHasConstructors)
+                return PluginCompilationResult.FromFailure(context, new PluginCompileException("Constructors in plugin class are not allowed, use OnInitialize instead"));
 
             var assemblyName = $"Plugin_{Path.GetFileNameWithoutExtension(pluginFile.Name)}";
             var encoded = CSharpSyntaxTree.Create(
