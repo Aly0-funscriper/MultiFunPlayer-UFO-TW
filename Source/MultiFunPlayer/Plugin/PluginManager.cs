@@ -1,4 +1,4 @@
-﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Common;
 using NLog;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -77,9 +77,7 @@ internal sealed class PluginManager : IPluginManager
         RemoveContainer(new FileInfo(e.FullPath));
 
         if (TryChangeExtension(e.FullPath, ".xaml", ".cs", out var csFullPath))
-            foreach (var container in _containers)
-                if (_comparer.Equals(container.File, new FileInfo(csFullPath)))
-                    container.QueueCompile();
+            TryCompileByPath(csFullPath);
     }
 
     private void OnWatcherCreated(object sender, FileSystemEventArgs e)
@@ -97,10 +95,16 @@ internal sealed class PluginManager : IPluginManager
             AddContainer(new FileInfo(e.FullPath));
 
             if (TryChangeExtension(e.FullPath, ".xaml", ".cs", out var csFullPath))
-                foreach (var container in _containers)
-                    if (_comparer.Equals(container.File, new FileInfo(csFullPath)))
-                        container.QueueCompile();
+                TryCompileByPath(csFullPath);
         }
+    }
+
+    private bool TryCompileByPath(string path)
+    {
+        var fileInfo = new FileInfo(path);
+        var container = _containers.SingleOrDefault(c => _comparer.Equals(c.File, fileInfo));
+        container?.QueueCompile();
+        return container != null;
     }
 
     private bool IsBasePathOf(string basePath, string subPath)
