@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using NLog;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -35,6 +35,7 @@ internal sealed class PluginManager : IPluginManager
         _watcher.Created += OnWatcherCreated;
         _watcher.Renamed += OnWatcherRenamed;
         _watcher.Deleted += OnWatcherDeleted;
+        _watcher.Changed += OnWatcherChanged;
 
         foreach (var fileInfo in pluginsDirectory.SafeEnumerateFiles("*.cs", IOUtils.CreateEnumerationOptions(true)))
             AddContainer(fileInfo);
@@ -63,6 +64,18 @@ internal sealed class PluginManager : IPluginManager
                 RemoveContainer(new FileInfo(csOldFullPath));
             if (TryChangeExtension(e.FullPath, ".xaml", ".cs", out var csFullPath))
                 AddContainer(new FileInfo(csFullPath));
+        }
+    }
+
+    private void OnWatcherChanged(object sender, FileSystemEventArgs e)
+    {
+        Logger.Trace("Received watcher changed event [Path: \"{0}\"", e.FullPath);
+
+        if (File.Exists(e.FullPath))
+        {
+            TryCompileByPath(e.FullPath);
+            if (TryChangeExtension(e.FullPath, ".xaml", ".cs", out var csFullPath))
+                TryCompileByPath(csFullPath);
         }
     }
 
