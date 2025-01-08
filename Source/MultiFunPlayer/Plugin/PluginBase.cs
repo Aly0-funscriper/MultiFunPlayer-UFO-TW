@@ -1,4 +1,4 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using MultiFunPlayer.Input;
 using MultiFunPlayer.Property;
 using MultiFunPlayer.Shortcut;
@@ -17,8 +17,14 @@ namespace MultiFunPlayer.Plugin;
 public abstract class PluginBase : Screen
 {
     private readonly MessageProxy _messageProxy;
-    private Lock _registeredActionsLock = new();
+
+    private readonly Lock _registeredActionsLock = new();
+    private readonly Lock _threadsLock = new();
+    private readonly Lock _tasksLock = new();
+
     private List<string> _registeredActions;
+    private List<Thread> _threads;
+    private List<Task> _tasks;
 
     [DoNotNotify] protected internal CancellationTokenSource CancellationSource { get; }
 
@@ -245,6 +251,39 @@ public abstract class PluginBase : Screen
     }
     #endregion
 
+    protected void StartThread(Action<CancellationToken> action)
+    {
+        if (CancellationSource.IsCancellationRequested)
+            return;
+
+        var thread = new Thread(() => action(CancellationToken));
+        lock (_threadsLock)
+        {
+            _threads ??= [];
+            _threads.Add(thread);
+        }
+
+        thread.Start();
+    }
+
+    protected void StartTask(Func<CancellationToken, Task> action)
+    {
+        if (CancellationSource.IsCancellationRequested)
+            return;
+
+        var task = Task.Run(async () =>
+        {
+            try { await action(CancellationToken); }
+            catch { }
+        }, CancellationToken);
+
+        lock (_tasksLock)
+        {
+            _tasks ??= [];
+            _tasks.Add(task);
+        }
+    }
+
     public virtual UIElement CreateView() => null;
 
     protected virtual void OnInitialize() { }
@@ -269,6 +308,16 @@ public abstract class PluginBase : Screen
             lock (_registeredActionsLock)
                 foreach (var actionName in _registeredActions)
                     UnregisterAction(actionName);
+
+        if (_tasks != null)
+            lock (_tasksLock)
+                foreach (var task in _tasks)
+                    task.GetAwaiter().GetResult();
+
+        if (_threads != null)
+            lock (_threadsLock)
+                foreach (var thread in _threads)
+                    thread.Join();
 
         Parent = null;
 
