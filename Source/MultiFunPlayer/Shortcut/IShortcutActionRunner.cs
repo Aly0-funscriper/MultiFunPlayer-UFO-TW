@@ -1,4 +1,4 @@
-using MultiFunPlayer.Input;
+﻿using MultiFunPlayer.Input;
 using NLog;
 using System.Collections.Concurrent;
 
@@ -45,7 +45,7 @@ internal sealed class ShortcutActionRunner : IShortcutActionRunner, IDisposable
     {
         foreach (var (item, callback) in _scheduledItems.GetConsumingEnumerable())
         {
-            item.Invoke(_actionResolver);
+            item.Invoke(_actionResolver).Preserve().GetAwaiter().GetResult();
             callback?.Invoke();
         }
     }
@@ -84,8 +84,7 @@ internal sealed class ShortcutActionRunner : IShortcutActionRunner, IDisposable
     {
         if (invokeDirectly)
         {
-            item.Invoke(_actionResolver);
-            return ValueTask.CompletedTask;
+            return item.Invoke(_actionResolver);
         }
         else
         {
@@ -101,7 +100,7 @@ internal sealed class ShortcutActionRunner : IShortcutActionRunner, IDisposable
     {
         if (invokeDirectly)
         {
-            item.Invoke(_actionResolver);
+            item.Invoke(_actionResolver).Preserve().GetAwaiter().GetResult();
         }
         else
         {
@@ -131,12 +130,12 @@ internal sealed class ShortcutActionRunner : IShortcutActionRunner, IDisposable
 
     private interface IInvokableItem
     {
-        void Invoke(IShortcutActionResolver actionResolver);
+        ValueTask Invoke(IShortcutActionResolver actionResolver);
     }
 
     private readonly record struct GestureInvokableItem(IEnumerable<IShortcutActionConfiguration> Configurations, IInputGestureData GestureData) : IInvokableItem
     {
-        public void Invoke(IShortcutActionResolver actionResolver)
+        public async ValueTask Invoke(IShortcutActionResolver actionResolver)
         {
             foreach (var configuration in Configurations)
             {
@@ -146,7 +145,7 @@ internal sealed class ShortcutActionRunner : IShortcutActionRunner, IDisposable
                         Logger.Trace("Invoking \"{0}\" action [Configuration: \"{1}\", Gesture: {2}]",
                             configuration.Name, string.Join(", ", configuration.Settings.Select(s => s.ToString())), GestureData);
 
-                    action.Invoke(configuration, GestureData).Preserve().GetAwaiter().GetResult();
+                    await action.Invoke(configuration, GestureData);
                 }
             }
         }
@@ -154,73 +153,85 @@ internal sealed class ShortcutActionRunner : IShortcutActionRunner, IDisposable
 
     private readonly record struct ManualInvokableItem(string ActionName) : IInvokableItem
     {
-        public void Invoke(IShortcutActionResolver actionResolver)
+        public ValueTask Invoke(IShortcutActionResolver actionResolver)
         {
             if (actionResolver.TryGetAction(ActionName, out var action) && action is ShortcutAction concreteAction)
             {
                 Logger.Trace("Invoking \"{name}\" action", ActionName);
-                concreteAction.Invoke().Preserve().GetAwaiter().GetResult();
+                return concreteAction.Invoke();
             }
+
+            return ValueTask.CompletedTask;
         }
     }
 
     private readonly record struct ManualInvokableItem<T0>(string ActionName, T0 Arg0) : IInvokableItem
     {
-        public void Invoke(IShortcutActionResolver actionResolver)
+        public ValueTask Invoke(IShortcutActionResolver actionResolver)
         {
             if (actionResolver.TryGetAction(ActionName, out var action) && action is ShortcutAction<T0> concreteAction)
             {
                 Logger.Trace("Invoking \"{0}\" action [Arguments: \"{1}\"]", ActionName, Arg0);
-                concreteAction.Invoke(Arg0).Preserve().GetAwaiter().GetResult();
+                return concreteAction.Invoke(Arg0);
             }
+
+            return ValueTask.CompletedTask;
         }
     }
 
     private readonly record struct ManualInvokableItem<T0, T1>(string ActionName, T0 Arg0, T1 Arg1) : IInvokableItem
     {
-        public void Invoke(IShortcutActionResolver actionResolver)
+        public ValueTask Invoke(IShortcutActionResolver actionResolver)
         {
             if (actionResolver.TryGetAction(ActionName, out var action) && action is ShortcutAction<T0, T1> concreteAction)
             {
                 Logger.Trace("Invoking \"{0}\" action [Arguments: \"{1}, {2}\"]", ActionName, Arg0, Arg1);
-                concreteAction.Invoke(Arg0, Arg1).Preserve().GetAwaiter().GetResult();
+                return concreteAction.Invoke(Arg0, Arg1);
             }
+
+            return ValueTask.CompletedTask;
         }
     }
 
     private readonly record struct ManualInvokableItem<T0, T1, T2>(string ActionName, T0 Arg0, T1 Arg1, T2 Arg2) : IInvokableItem
     {
-        public void Invoke(IShortcutActionResolver actionResolver)
+        public ValueTask Invoke(IShortcutActionResolver actionResolver)
         {
             if (actionResolver.TryGetAction(ActionName, out var action) && action is ShortcutAction<T0, T1, T2> concreteAction)
             {
                 Logger.Trace("Invoking \"{0}\" action [Arguments: \"{1}, {2}, {3}\"]", ActionName, Arg0, Arg1, Arg2);
-                concreteAction.Invoke(Arg0, Arg1, Arg2).Preserve().GetAwaiter().GetResult();
+                return concreteAction.Invoke(Arg0, Arg1, Arg2);
             }
+
+            return ValueTask.CompletedTask;
         }
     }
 
     private readonly record struct ManualInvokableItem<T0, T1, T2, T3>(string ActionName, T0 Arg0, T1 Arg1, T2 Arg2, T3 Arg3) : IInvokableItem
     {
-        public void Invoke(IShortcutActionResolver actionResolver)
+        public ValueTask Invoke(IShortcutActionResolver actionResolver)
         {
             if (actionResolver.TryGetAction(ActionName, out var action) && action is ShortcutAction<T0, T1, T2, T3> concreteAction)
             {
                 Logger.Trace("Invoking \"{0}\" action [Arguments: \"{1}, {2}, {3}, {4}\"]", ActionName, Arg0, Arg1, Arg2, Arg3);
-                concreteAction.Invoke(Arg0, Arg1, Arg2, Arg3).Preserve().GetAwaiter().GetResult();
+                return concreteAction.Invoke(Arg0, Arg1, Arg2, Arg3);
             }
+
+            return ValueTask.CompletedTask;
         }
     }
 
     private readonly record struct ManualInvokableItem<T0, T1, T2, T3, T4>(string ActionName, T0 Arg0, T1 Arg1, T2 Arg2, T3 Arg3, T4 Arg4) : IInvokableItem
     {
-        public void Invoke(IShortcutActionResolver actionResolver)
+        public ValueTask Invoke(IShortcutActionResolver actionResolver)
         {
             if (actionResolver.TryGetAction(ActionName, out var action) && action is ShortcutAction<T0, T1, T2, T3, T4> concreteAction)
             {
                 Logger.Trace("Invoking \"{0}\" action [Arguments: \"{1}, {2}, {3}, {4}, {5}\"]", ActionName, Arg0, Arg1, Arg2, Arg3, Arg4);
-                concreteAction.Invoke(Arg0, Arg1, Arg2, Arg3, Arg4).Preserve().GetAwaiter().GetResult();
+                return concreteAction.Invoke(Arg0, Arg1, Arg2, Arg3, Arg4);
             }
+
+            return ValueTask.CompletedTask;
         }
     }
 }
