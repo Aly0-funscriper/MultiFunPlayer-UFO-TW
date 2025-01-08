@@ -34,6 +34,7 @@ public abstract class PluginBase : Screen
     [Inject][DoNotNotify] internal IPropertyManager PropertyManager { get; set; }
 
     protected CancellationToken CancellationToken => CancellationSource.Token;
+    protected bool IsDisposing { get; private set; }
 
     protected PluginBase()
     {
@@ -299,6 +300,8 @@ public abstract class PluginBase : Screen
 
     internal void InternalDispose()
     {
+        IsDisposing = true;
+
         EventAggregator.Unsubscribe(_messageProxy);
 
         CancellationSource.Cancel();
