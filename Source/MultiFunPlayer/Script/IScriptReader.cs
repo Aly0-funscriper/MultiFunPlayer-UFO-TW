@@ -1,5 +1,6 @@
-using MultiFunPlayer.Common;
+﻿using MultiFunPlayer.Common;
 using Newtonsoft.Json;
+using NLog;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -82,45 +83,62 @@ public abstract class AbstractTextScriptReader : AbstractScriptReader
 
 public sealed class FunscriptReader : AbstractTextScriptReader
 {
+    private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
+
     public static FunscriptReader Default { get; } = new FunscriptReader();
 
     public override ScriptReaderResult FromStream(string name, string source, TextReader stream)
     {
-        using var jsonReader = new JsonTextReader(stream);
-        var serializer = JsonSerializer.CreateDefault();
-
-        var script = serializer.Deserialize<Script>(jsonReader);
-        var hasActions = script.Actions?.Count > 0;
-        var hasAxes = script.Axes?.Count > 0;
-        if (!hasActions && !hasAxes)
-            return ScriptReaderResult.FromFailure();
-
-        var resource = CreateResource(script.Actions);
-        if (!hasAxes)
-            return ScriptReaderResult.FromSuccess(name, source, resource);
-
-        var resources = new Dictionary<DeviceAxis, IScriptResource>();
-        if (hasActions && DeviceAxis.TryParse("L0", out var strokeAxis))
-            resources[strokeAxis] = resource;
-
-        foreach (var scriptAxis in script.Axes)
+        try
         {
-            if (!DeviceAxis.TryParse(scriptAxis.Id, out var axis))
-                continue;
+            using var jsonReader = new JsonTextReader(stream);
+            var serializer = JsonSerializer.CreateDefault();
 
-            resources[axis] = CreateResource(scriptAxis.Actions);
+            var script = serializer.Deserialize<Script>(jsonReader);
+            var hasActions = script.Actions?.Count > 0;
+            var hasAxes = script.Axes?.Count > 0;
+            if (!hasActions && !hasAxes)
+            {
+                Logger.Trace("No actions found in script [Name: \"{0}\", Source: \"{1}\"]", name, source);
+                return ScriptReaderResult.FromFailure();
+            }
+
+            var resource = CreateResource(script.Actions);
+            if (!hasAxes)
+            {
+                Logger.Trace("Successfully read single-axis script [Name: \"{0}\", Source: \"{1}\"]", name, source);
+                return ScriptReaderResult.FromSuccess(name, source, resource);
+            }
+
+            var resources = new Dictionary<DeviceAxis, IScriptResource>();
+            if (hasActions && DeviceAxis.TryParse("L0", out var strokeAxis))
+                resources[strokeAxis] = resource;
+
+            foreach (var scriptAxis in script.Axes)
+            {
+                if (!DeviceAxis.TryParse(scriptAxis.Id, out var axis))
+                    continue;
+
+                resources[axis] = CreateResource(scriptAxis.Actions);
+            }
+
+            Logger.Trace("Successfully read multi-axis script [Name: {name}, Source: {source}, Axes: \"{list}\"]", name, source, resources.Keys);
+            return ScriptReaderResult.FromSuccess(name, source, resources);
+
+            IScriptResource CreateResource(List<Action> actions) => new ScriptResource()
+            {
+                Name = name,
+                Source = source,
+                Keyframes = CreateKeyframeCollection(actions),
+                Chapters = CreateChapterCollection(script.Metadata),
+                Bookmarks = CreateBookmarkCollection(script.Metadata)
+            };
         }
-
-        return ScriptReaderResult.FromSuccess(name, source, resources);
-
-        IScriptResource CreateResource(List<Action> actions) => new ScriptResource()
+        catch (Exception e)
         {
-            Name = name,
-            Source = source,
-            Keyframes = CreateKeyframeCollection(actions),
-            Chapters = CreateChapterCollection(script.Metadata),
-            Bookmarks = CreateBookmarkCollection(script.Metadata)
-        };
+            Logger.Error(e, "Failed to read script [Name: \"{0}\", Source: \"{1}\"]", name, source);
+            return ScriptReaderResult.FromFailure();
+        }
 
         static ChapterCollection CreateChapterCollection(Metadata metadata)
         {
@@ -178,41 +196,55 @@ public sealed class FunscriptReader : AbstractTextScriptReader
 
 public sealed class CsvReader : AbstractTextScriptReader
 {
+    private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
+
     public static CsvReader Default { get; } = new CsvReader();
 
     public override ScriptReaderResult FromStream(string name, string source, TextReader stream)
     {
-        var keyframes = new KeyframeCollection();
-
-        while (true)
+        try
         {
-            var line = stream.ReadLine();
-            if (line == null)
-                break;
+            var keyframes = new KeyframeCollection();
 
-            var items = line.Split(';');
-            if (items.Length != 2)
-                continue;
+            while (true)
+            {
+                var line = stream.ReadLine();
+                if (line == null)
+                    break;
 
-            if (!double.TryParse(items[0].Replace(',', '.'), NumberStyles.Any, NumberFormatInfo.InvariantInfo, out var position)
-             || !double.TryParse(items[1].Replace(',', '.'), NumberStyles.Any, NumberFormatInfo.InvariantInfo, out var value))
-                continue;
+                var items = line.Split(';');
+                if (items.Length != 2)
+                    continue;
 
-            if (position < 0)
-                continue;
+                if (!double.TryParse(items[0].Replace(',', '.'), NumberStyles.Any, NumberFormatInfo.InvariantInfo, out var position)
+                 || !double.TryParse(items[1].Replace(',', '.'), NumberStyles.Any, NumberFormatInfo.InvariantInfo, out var value))
+                    continue;
 
-            value = MathUtils.Clamp01(value);
-            keyframes.Add(position, value);
+                if (position < 0)
+                    continue;
+
+                value = MathUtils.Clamp01(value);
+                keyframes.Add(position, value);
+            }
+
+            if (keyframes.Count == 0)
+            {
+                Logger.Trace("No keyframes found in script [Name: \"{0}\", Source: \"{1}\"]", name, source);
+                return ScriptReaderResult.FromFailure();
+            }
+
+            Logger.Trace("Successfully read script [Name: \"{0}\", Source: \"{1}\"]", name, source);
+            return ScriptReaderResult.FromSuccess(name, source, new ScriptResource()
+            {
+                Name = name,
+                Source = source,
+                Keyframes = keyframes
+            });
         }
-
-        if (keyframes.Count == 0)
-            return ScriptReaderResult.FromFailure();
-
-        return ScriptReaderResult.FromSuccess(name, source, new ScriptResource()
+        catch (Exception e)
         {
-            Name = name,
-            Source = source,
-            Keyframes = keyframes
-        });
+            Logger.Error(e, "Failed to read script [Name: \"{0}\", Source: \"{1}\"]", name, source);
+            return ScriptReaderResult.FromFailure();
+        }
     }
 }

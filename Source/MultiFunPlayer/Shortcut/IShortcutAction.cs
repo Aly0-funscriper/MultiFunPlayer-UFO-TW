@@ -31,7 +31,9 @@ internal abstract class AbstractShortcutAction : IShortcutAction
 
     public bool AcceptsGestureData(Type gestureDataType)
     {
-        if (gestureDataType == typeof(ISimpleInputGestureData))
+        if (gestureDataType == typeof(IEmptyInputGestureData))
+            return _arguments.Count == 0 || !_arguments[0].IsAssignableTo(typeof(IInputGestureData)) || gestureDataType.IsAssignableTo(_arguments[0]);
+        if (gestureDataType == typeof(IToggleInputGestureData))
             return _arguments.Count == 0 || !_arguments[0].IsAssignableTo(typeof(IInputGestureData)) || gestureDataType.IsAssignableTo(_arguments[0]);
         if (gestureDataType == typeof(IAxisInputGestureData))
             return _arguments.Count > 0 && gestureDataType.IsAssignableTo(_arguments[0]);

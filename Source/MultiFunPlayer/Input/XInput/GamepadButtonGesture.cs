@@ -2,7 +2,7 @@
 
 namespace MultiFunPlayer.Input.XInput;
 
-internal sealed record GamepadButtonGestureDescriptor : ISimpleInputGestureDescriptor
+internal sealed record GamepadButtonGestureDescriptor : IButtonInputGestureDescriptor
 {
     private static readonly IEqualityComparer<SortedSet<GamepadVirtualKey>> _comparer = SortedSet<GamepadVirtualKey>.CreateSetComparer();
 
@@ -22,7 +22,7 @@ internal sealed record GamepadButtonGestureDescriptor : ISimpleInputGestureDescr
     public override string ToString() => $"[Gamepad Buttons: {UserIndex}/{string.Join(", ", Buttons)}]";
 }
 
-internal sealed class GamepadButtonGesture(GamepadButtonGestureDescriptor descriptor, bool state) : AbstractSimpleInputGesture(descriptor, state)
+internal sealed class GamepadButtonGesture(GamepadButtonGestureDescriptor descriptor, bool state) : AbstractButtonInputGesture(descriptor, state)
 {
     public uint UserIndex => descriptor.UserIndex;
     public IEnumerable<GamepadVirtualKey> Buttons => descriptor.Buttons;

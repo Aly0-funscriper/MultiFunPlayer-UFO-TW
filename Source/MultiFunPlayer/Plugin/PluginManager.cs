@@ -35,6 +35,7 @@ internal sealed class PluginManager : IPluginManager
         _watcher.Created += OnWatcherCreated;
         _watcher.Renamed += OnWatcherRenamed;
         _watcher.Deleted += OnWatcherDeleted;
+        _watcher.Changed += OnWatcherChanged;
 
         foreach (var fileInfo in pluginsDirectory.SafeEnumerateFiles("*.cs", IOUtils.CreateEnumerationOptions(true)))
             AddContainer(fileInfo);
@@ -53,12 +54,6 @@ internal sealed class PluginManager : IPluginManager
             var newDirectory = new DirectoryInfo(e.FullPath);
             foreach (var pluginFile in newDirectory.SafeEnumerateFiles("*.cs", IOUtils.CreateEnumerationOptions(true)))
                 AddContainer(pluginFile);
-
-            static bool IsBasePathOf(string basePath, string subPath)
-            {
-                var relativePath = Path.GetRelativePath(subPath.Replace('\\', '/'), basePath.Replace('\\', '/'));
-                return relativePath == "." || relativePath.EndsWith("..");
-            }
         }
         else if (File.Exists(e.OldFullPath) || File.Exists(e.FullPath))
         {
@@ -69,24 +64,82 @@ internal sealed class PluginManager : IPluginManager
                 RemoveContainer(new FileInfo(csOldFullPath));
             if (TryChangeExtension(e.FullPath, ".xaml", ".cs", out var csFullPath))
                 AddContainer(new FileInfo(csFullPath));
+        }
+    }
 
-            static bool TryChangeExtension(string path, string extensionFrom, string extensionTo, out string result)
-                => !string.IsNullOrWhiteSpace(result = string.Equals(Path.GetExtension(path), extensionFrom, StringComparison.OrdinalIgnoreCase)
-                                                        ? Path.ChangeExtension(path, extensionTo) : null);
+    private void OnWatcherChanged(object sender, FileSystemEventArgs e)
+    {
+        Logger.Trace("Received watcher changed event [Path: \"{0}\"", e.FullPath);
+
+        if (File.Exists(e.FullPath))
+        {
+            TryCompileByPath(e.FullPath);
+            if (TryChangeExtension(e.FullPath, ".xaml", ".cs", out var csFullPath))
+                TryCompileByPath(csFullPath);
         }
     }
 
     private void OnWatcherDeleted(object sender, FileSystemEventArgs e)
     {
         Logger.Trace("Received watcher deleted event [Path: \"{0}\"", e.FullPath);
+
+        foreach (var container in _containers)
+            if (IsBasePathOf(e.FullPath, container.File.DirectoryName))
+                RemoveContainer(container.File);
+
         RemoveContainer(new FileInfo(e.FullPath));
+
+        if (TryChangeExtension(e.FullPath, ".xaml", ".cs", out var csFullPath))
+            TryCompileByPath(csFullPath);
     }
 
     private void OnWatcherCreated(object sender, FileSystemEventArgs e)
     {
         Logger.Trace("Received watcher created event [Path: \"{0}\"", e.FullPath);
-        AddContainer(new FileInfo(e.FullPath));
+
+        if (Directory.Exists(e.FullPath))
+        {
+            var newDirectory = new DirectoryInfo(e.FullPath);
+            foreach (var pluginFile in newDirectory.SafeEnumerateFiles("*.cs", IOUtils.CreateEnumerationOptions(true)))
+                AddContainer(pluginFile);
+        }
+        else if (File.Exists(e.FullPath))
+        {
+            AddContainer(new FileInfo(e.FullPath));
+
+            if (TryChangeExtension(e.FullPath, ".xaml", ".cs", out var csFullPath))
+                TryCompileByPath(csFullPath);
+        }
     }
+
+    private bool TryCompileByPath(string path)
+    {
+        var fileInfo = new FileInfo(path);
+        var container = _containers.SingleOrDefault(c => _comparer.Equals(c.File, fileInfo));
+        container?.QueueCompile();
+        return container != null;
+    }
+
+    private bool IsBasePathOf(string basePath, string subPath)
+    {
+        var relativePath = Path.GetRelativePath(subPath.Replace('\\', '/'), basePath.Replace('\\', '/'));
+        return relativePath == "." || relativePath.EndsWith("..");
+    }
+
+    private int GetPathDepth(string basePath, string subPath)
+    {
+        var relativePath = Path.GetRelativePath(subPath.Replace('\\', '/'), basePath.Replace('\\', '/'));
+        if (relativePath.AsSpan().IndexOfAnyExcept("./\\") >= 0)
+            return -1;
+        if (relativePath == ".")
+            return 0;
+
+        return relativePath.Count(c => c is '/' or '\\') + 1;
+    }
+
+    private bool TryChangeExtension(string path, string extensionFrom, string extensionTo, out string result)
+        => !string.IsNullOrWhiteSpace(result = string.Equals(Path.GetExtension(path), extensionFrom, StringComparison.OrdinalIgnoreCase)
+                                                ? Path.ChangeExtension(path, extensionTo) : null);
 
     private void RemoveContainer(FileInfo fileInfo)
     {
@@ -109,6 +162,9 @@ internal sealed class PluginManager : IPluginManager
             return;
 
         if (_containers.Any(c => _comparer.Equals(c.File, fileInfo)))
+            return;
+
+        if (GetPathDepth(_watcher.Path, fileInfo.FullName) is not (1 or 2))
             return;
 
         Logger.Debug("Adding container [Path: \"{0}\"", fileInfo);

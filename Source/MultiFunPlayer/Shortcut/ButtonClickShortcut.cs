@@ -4,15 +4,15 @@ using System.ComponentModel;
 namespace MultiFunPlayer.Shortcut;
 
 [DisplayName("Button Click")]
-internal sealed class ButtonClickShortcut(IShortcutActionRunner actionRunner, ISimpleInputGestureDescriptor gesture)
-    : AbstractShortcut<ISimpleInputGesture, ISimpleInputGestureData>(actionRunner, gesture)
+internal sealed class ButtonClickShortcut(IShortcutActionRunner actionRunner, IButtonInputGestureDescriptor gesture)
+    : AbstractShortcut<IButtonInputGesture, IEmptyInputGestureData>(actionRunner, gesture)
 {
     private int _stateCounter;
 
     public int ClickCount { get; set; } = 1;
     public int MaximumClickInterval { get; set; } = 200;
 
-    protected override void Update(ISimpleInputGesture gesture)
+    protected override void Update(IButtonInputGesture gesture)
     {
         if (gesture.State && _stateCounter % 2 == 0)
         {
@@ -25,7 +25,7 @@ internal sealed class ButtonClickShortcut(IShortcutActionRunner actionRunner, IS
 
             Delay(MaximumClickInterval, () => {
                 if (_stateCounter == 2 * ClickCount)
-                    Invoke(SimpleInputGestureData.Default);
+                    Invoke(EmptyInputGestureData.Default);
 
                 _stateCounter = 0;
             });

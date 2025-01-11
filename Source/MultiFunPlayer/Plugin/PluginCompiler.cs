@@ -104,7 +104,9 @@ internal static partial class PluginCompiler
                 global using global::Newtonsoft.Json;
                 global using global::Newtonsoft.Json.Linq;
                 global using global::MultiFunPlayer.Common;
+                global using global::MultiFunPlayer.Input;
                 global using global::MultiFunPlayer.Plugin;
+                global using global::MultiFunPlayer.Script;
                 """,
                 path: "GlobalUsings.cs",
                 encoding: Encoding.UTF8
@@ -180,7 +182,7 @@ internal static partial class PluginCompiler
             var pluginClasses = syntaxTree.GetRoot()
                                           .DescendantNodes()
                                           .OfType<ClassDeclarationSyntax>()
-                                          .Where(s => s.BaseList.Types.Any(x => string.Equals(x.ToString(), nameof(PluginBase), StringComparison.OrdinalIgnoreCase)))
+                                          .Where(s => s.BaseList?.Types.Any(x => string.Equals(x.ToString(), nameof(PluginBase), StringComparison.OrdinalIgnoreCase)) == true)
                                           .ToList();
 
             if (pluginClasses.Count == 0)
@@ -188,12 +190,11 @@ internal static partial class PluginCompiler
             if (pluginClasses.Count > 1)
                 return PluginCompilationResult.FromFailure(context, new PluginCompileException("Found more than one class inheriting PluginBase"));
 
-            var pluginConstructors = syntaxTree.GetRoot()
-                                               .DescendantNodes()
-                                               .OfType<ConstructorDeclarationSyntax>();
-
-            if (pluginConstructors.Any())
-                return PluginCompilationResult.FromFailure(context, new PluginCompileException("Constructors are not allowed, use OnInitialize instead"));
+            var pluginHasConstructors = pluginClasses[0].DescendantNodes()
+                                                        .OfType<ConstructorDeclarationSyntax>()
+                                                        .Any();
+            if (pluginHasConstructors)
+                return PluginCompilationResult.FromFailure(context, new PluginCompileException("Constructors in plugin class are not allowed, use OnInitialize instead"));
 
             var assemblyName = $"Plugin_{Path.GetFileNameWithoutExtension(pluginFile.Name)}";
             var encoded = CSharpSyntaxTree.Create(
@@ -259,7 +260,11 @@ internal static partial class PluginCompiler
             PluginBase BuildUpPluginInstance(PluginBase instance)
             {
                 CreateAndBindPluginInstanceView(instance);
-                Container.BuildUp(instance);
+
+                foreach (var property in pluginType.GetProperties(BindingFlags.Instance | BindingFlags.NonPublic)
+                                                   .Where(p => p.GetCustomAttribute<InjectAttribute>() != null))
+                    property.SetValue(instance, Container.Get(property.PropertyType));
+
                 return instance;
             }
 

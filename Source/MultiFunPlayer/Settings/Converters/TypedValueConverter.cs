@@ -10,7 +10,7 @@ internal sealed class TypedValueConverter : JsonConverter<TypedValue>
     public override TypedValue ReadJson(JsonReader reader, Type objectType, TypedValue existingValue, bool hasExistingValue, JsonSerializer serializer)
     {
         var o = JToken.ReadFrom(reader) as JObject;
-        var valueType = o.GetTypeProperty();
+        var valueType = o.GetTypeProperty() ?? throw new JsonReaderException($"Unable to find type {o["$type"]}");
 
         if (o.ContainsKey("Value"))
             return new TypedValue(valueType, o["Value"].ToObject(valueType));

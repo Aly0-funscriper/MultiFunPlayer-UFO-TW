@@ -52,9 +52,7 @@ internal sealed class PluginContainer : PropertyChangedBase, IChildDelegate, ISc
             _compilationResult = result;
             if (_compilationResult.Success)
             {
-                var pluginInstance = _compilationResult.PluginInstance;
-                pluginInstance.InternalInitialize();
-                pluginInstance.Parent = this;
+                _compilationResult.PluginInstance.InternalInitialize(this);
 
                 State = PluginState.Running;
                 Exception = null;

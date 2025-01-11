@@ -1,28 +1,44 @@
 ﻿namespace MultiFunPlayer.Input;
 
-internal interface IInputGesture
+public interface IInputGesture
 {
     IInputGestureDescriptor Descriptor { get; }
 }
 
-internal interface ISimpleInputGesture : IInputGesture
+public interface IButtonInputGesture : IInputGesture
 {
     bool State { get; }
 }
 
-internal interface IAxisInputGesture : IInputGesture
+public interface IToggleInputGesture : IInputGesture
+{
+    bool State { get; }
+    bool IsInitialState { get; }
+}
+
+public interface IAxisInputGesture : IInputGesture
 {
     public double Value { get; }
     public double Delta { get; }
     public double DeltaTime { get; }
 }
 
-internal abstract class AbstractSimpleInputGesture(ISimpleInputGestureDescriptor descriptor, bool state) : ISimpleInputGesture
+internal abstract class AbstractButtonInputGesture(IButtonInputGestureDescriptor descriptor, bool state) : IButtonInputGesture
 {
     public IInputGestureDescriptor Descriptor { get; } = descriptor;
     public bool State { get; } = state;
 
-    public override bool Equals(object obj) => obj is ISimpleInputGesture gesture && Descriptor.Equals(gesture.Descriptor);
+    public override bool Equals(object obj) => obj is IButtonInputGesture gesture && Descriptor.Equals(gesture.Descriptor);
+    public override int GetHashCode() => HashCode.Combine(Descriptor);
+}
+
+internal abstract class AbstractToggleInputGesture(IToggleInputGestureDescriptor descriptor, bool state, bool isInitialState) : IToggleInputGesture
+{
+    public IInputGestureDescriptor Descriptor { get; } = descriptor;
+    public bool State { get; } = state;
+    public bool IsInitialState { get; } = isInitialState;
+
+    public override bool Equals(object obj) => obj is IToggleInputGesture gesture && Descriptor.Equals(gesture.Descriptor);
     public override int GetHashCode() => HashCode.Combine(Descriptor);
 }
 

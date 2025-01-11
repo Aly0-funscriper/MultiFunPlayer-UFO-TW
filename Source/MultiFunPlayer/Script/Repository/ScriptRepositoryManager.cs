@@ -30,7 +30,7 @@ internal sealed class ScriptRepositoryManager : Screen, IScriptRepositoryManager
         _eventAggregator = eventAggregator;
         _eventAggregator.Subscribe(this);
 
-        _localRepository = repositories.Single(r => r.GetType().IsAssignableTo(typeof(ILocalScriptRepository))) as ILocalScriptRepository;
+        _localRepository = repositories.OfType<ILocalScriptRepository>().Single();
         Repositories = [.. repositories.OrderBy(r => r.GetType().GetCustomAttribute<DisplayIndexAttribute>()?.Index ?? int.MaxValue)];
 
         foreach (var repository in Repositories)
