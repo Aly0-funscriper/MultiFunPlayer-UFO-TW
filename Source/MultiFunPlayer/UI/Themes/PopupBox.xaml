@@ -1,0 +1,107 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:material="http://materialdesigninxaml.net/winfx/xaml/themes">
+    <Style x:Key="MaterialDesignToolBarPopupBox"
+           BasedOn="{StaticResource MaterialDesignPopupBox}"
+           TargetType="material:PopupBox">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="ToggleContent" Value="{StaticResource MaterialDesignPopupBoxToggleContent}"/>
+        <Setter Property="material:RippleAssist.Feedback" Value="{DynamicResource MaterialDesignFlatButtonRipple}"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="PopupHorizontalOffset" Value="5"/>
+        <Setter Property="PopupVerticalOffset" Value="5"/>
+        <Setter Property="material:ShadowAssist.ShadowDepth" Value="Depth1"/>
+        <Setter Property="TextElement.FontWeight" Value="Normal"/>
+        <Setter Property="Width" Value="36"/>
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="Padding" Value="0 8 0 8"/>
+        <Setter Property="Focusable" Value="True"/>
+        <Setter Property="ToolTipService.IsEnabled" Value="{Binding IsPopupOpen, RelativeSource={RelativeSource Self}, Converter={StaticResource NotConverter}}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type material:PopupBox}">
+                    <ControlTemplate.Resources>
+                        <Style BasedOn="{StaticResource MaterialDesignSeparator}" TargetType="Separator"/>
+                        <Style x:Key="ToggleButtonStyle" TargetType="ToggleButton">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <material:Ripple Padding="{TemplateBinding Padding}"
+                                                         HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                         VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                         Content="{TemplateBinding Content}"
+                                                         ContentStringFormat="{TemplateBinding ContentStringFormat}"
+                                                         ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                         Focusable="False"
+                                                         SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}">
+                                            <material:Ripple.Clip>
+                                                <MultiBinding Converter="{StaticResource BorderClipConverter}">
+                                                    <Binding ElementName="border" Path="ActualWidth"/>
+                                                    <Binding ElementName="border" Path="ActualHeight"/>
+                                                    <Binding ElementName="border" Path="CornerRadius"/>
+                                                    <Binding ElementName="border" Path="BorderThickness"/>
+                                                </MultiBinding>
+                                            </material:Ripple.Clip>
+                                        </material:Ripple>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ControlTemplate.Resources>
+                    <Grid>
+                        <AdornerDecorator>
+                            <Grid>
+                                <Border x:Name="border" Background="Transparent"/>
+                            </Grid>
+                        </AdornerDecorator>
+                        <ToggleButton x:Name="PART_Toggle"
+                                      Style="{StaticResource ToggleButtonStyle}"
+                                      Width="{TemplateBinding Width}"
+                                      Height="{TemplateBinding Height}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      Cursor="Hand"
+                                      FocusVisualStyle="{x:Null}"
+                                      Foreground="{DynamicResource MaterialDesignBody}"
+                                      IsChecked="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=IsPopupOpen, Mode=TwoWay}"
+                                      IsTabStop="{TemplateBinding IsTabStop}"
+                                      TabIndex="{TemplateBinding TabIndex}">
+                            <ContentPresenter Content="{TemplateBinding ToggleContent}" ContentTemplate="{TemplateBinding ToggleContentTemplate}"/>
+                        </ToggleButton>
+                        <material:PopupEx x:Name="PART_Popup"
+                                          AllowsTransparency="True"
+                                          CustomPopupPlacementCallback="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=PopupPlacementMethod}"
+                                          HorizontalOffset="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=PopupHorizontalOffset}"
+                                          IsOpen="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=IsPopupOpen, Mode=TwoWay}"
+                                          Placement="Custom"
+                                          PlacementTarget="{Binding ElementName=PART_Toggle}"
+                                          PopupAnimation="Fade"
+                                          VerticalOffset="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=PopupVerticalOffset}">
+                            <material:Card Margin="5"
+                                           Padding="{TemplateBinding Padding}"
+                                           material:ShadowAssist.ShadowDepth="{TemplateBinding material:ShadowAssist.ShadowDepth}"
+                                           Content="{TemplateBinding PopupContent}"
+                                           ContentTemplate="{TemplateBinding PopupContentTemplate}"
+                                           Foreground="{DynamicResource MaterialDesignBody}"
+                                           RenderOptions.ClearTypeHint="Enabled">
+                                <material:Card.Resources>
+                                    <Style BasedOn="{StaticResource MaterialDesignPopupBoxButton}" TargetType="Button"/>
+                                </material:Card.Resources>
+                            </material:Card>
+                        </material:PopupEx>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEnabled" Value="false">
+                            <Setter Property="Opacity" Value=".56"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="true">
+                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource MaterialDesignFlatButtonClick}"/>
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource MaterialDesignFlatButtonClick}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

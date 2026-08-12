@@ -1,0 +1,305 @@
+﻿<UserControl x:Class="MultiFunPlayer.UI.Controls.Views.DeviceSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:MultiFunPlayer.UI.Converters"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:material="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:metro="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:s="https://github.com/canton7/Stylet"
+             xmlns:ui="clr-namespace:MultiFunPlayer.UI"
+             d:DesignHeight="450"
+             d:DesignWidth="800"
+             x:ClassModifier="internal"
+             mc:Ignorable="d">
+    <UserControl.Resources>
+        <converters:FunscriptNameListToStringConverter x:Key="FunscriptNameListToStringConverter"/>
+    </UserControl.Resources>
+
+    <Grid Margin="20">
+        <DockPanel LastChildFill="True">
+            <material:Card DockPanel.Dock="Top"
+                           Margin="0 0 0 20"
+                           material:ShadowAssist.ShadowDepth="Depth1">
+                <DockPanel Margin="10">
+                    <material:PackIcon DockPanel.Dock="Left"
+                                       Width="24"
+                                       Height="24"
+                                       Margin="10 0 0 0"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource MaterialDesignErrorBrush}"
+                                       Kind="ExclamationBold"/>
+
+                    <TextBlock DockPanel.Dock="Right"
+                               Margin="50 0 0 0"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Center">
+                        Changing device and removing or disabling axes will reset certain settings.<LineBreak/>
+                        All changes require application restart to apply.</TextBlock>
+                </DockPanel>
+            </material:Card>
+
+            <DockPanel DockPanel.Dock="Top" Margin="0 0 0 5">
+                <TextBlock DockPanel.Dock="Left"
+                           Margin="0 0 10 0"
+                           VerticalAlignment="Center"
+                           Text="Selected device:"/>
+
+                <Button DockPanel.Dock="Right"
+                        Style="{StaticResource MaterialDesignFlatButton}"
+                        Width="24"
+                        Height="24"
+                        Padding="0"
+                        material:RippleAssist.Feedback="{DynamicResource MaterialDesignErrorBrush}"
+                        Click="{s:Action OnRemoveSelectedDevice}"
+                        Foreground="{DynamicResource MaterialDesignErrorBrush}"
+                        IsEnabled="{Binding CanRemoveSelectedDevice}"
+                        ToolTip="Remove selected">
+                    <material:PackIcon Kind="Delete"/>
+                </Button>
+                <Button DockPanel.Dock="Right"
+                        Style="{StaticResource MaterialDesignFlatButton}"
+                        Width="24"
+                        Height="24"
+                        Padding="0"
+                        Click="{s:Action OnRenameSelectedDevice}"
+                        IsEnabled="{Binding CanRenameSelectedDevice}"
+                        ToolTip="Rename selected">
+                    <material:PackIcon Kind="Pencil"/>
+                </Button>
+                <Button DockPanel.Dock="Right"
+                        Style="{StaticResource MaterialDesignFlatButton}"
+                        Width="24"
+                        Height="24"
+                        Padding="0"
+                        Click="{s:Action OnExportSelectedDevice}"
+                        IsEnabled="{Binding CanExportSelectedDevice}"
+                        ToolTip="Export selected to clipboard">
+                    <material:PackIcon Kind="Export"/>
+                </Button>
+                <Button DockPanel.Dock="Right"
+                        Style="{StaticResource MaterialDesignFlatButton}"
+                        Width="24"
+                        Height="24"
+                        Padding="0"
+                        Click="{s:Action OnImportDevice}"
+                        ToolTip="Create from clipboard">
+                    <material:PackIcon Kind="Import"/>
+                </Button>
+                <Button DockPanel.Dock="Right"
+                        Style="{StaticResource MaterialDesignFlatButton}"
+                        Width="24"
+                        Height="24"
+                        Padding="0"
+                        Click="{s:Action OnCloneDevice}"
+                        ToolTip="Clone selected">
+                    <material:PackIcon Kind="ContentDuplicate"/>
+                </Button>
+
+                <ComboBox DockPanel.Dock="Left"
+                          ItemsSource="{Binding Devices}"
+                          SelectedItem="{Binding SelectedDevice}"
+                          Margin="0 0 10 0">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock VerticalAlignment="Center" Text="{Binding Name}">
+                                    <TextBlock.Resources>
+                                        <Style BasedOn="{StaticResource MaterialDesignTextBlock}" TargetType="{x:Type TextBlock}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDefault}" Value="True">
+                                                    <DataTrigger.Setters>
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                    </DataTrigger.Setters>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Resources>
+                                </TextBlock>
+
+                                <TextBlock VerticalAlignment="Center"
+                                           FontWeight="Bold"
+                                           Text=" (default)"
+                                           Visibility="{Binding IsDefault, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </DockPanel>
+
+            <material:Card DockPanel.Dock="Top"
+                           Margin="0 0 0 10"
+                           material:ShadowAssist.ShadowDepth="Depth1"
+                           Visibility="{Binding SelectedDevice.IsDefault, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <DockPanel Margin="5">
+                    <material:PackIcon DockPanel.Dock="Left"
+                                       Width="20"
+                                       Height="20"
+                                       Margin="17 0 2 0"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource MaterialDesignWarningBrush}"
+                                       Kind="Alert"/>
+
+                    <TextBlock DockPanel.Dock="Right"
+                               Margin="50 0 0 0"
+                               VerticalAlignment="Center"
+                               Text="Clone this device to customize all settings."/>
+                </DockPanel>
+            </material:Card>
+
+            <material:Card DockPanel.Dock="Top"
+                           Margin="0 0 0 10"
+                           material:ShadowAssist.ShadowDepth="Depth1"
+                           IsEnabled="{Binding SelectedDevice.IsDefault, Converter={StaticResource NotConverter}}">
+                <DockPanel DockPanel.Dock="Top"
+                           Margin="10"
+                           LastChildFill="False">
+
+                    <DockPanel DockPanel.Dock="Top" LastChildFill="False">
+                        <TextBlock DockPanel.Dock="Left"
+                                   Margin="0 0 10 0"
+                                   VerticalAlignment="Center"
+                                   Text="Output precision:"/>
+
+                        <metro:NumericUpDown DockPanel.Dock="Left"
+                                             Width="50"
+                                             HideUpDownButtons="True"
+                                             Maximum="10"
+                                             Minimum="1"
+                                             Value="{Binding SelectedDevice.OutputPrecision}"/>
+                    </DockPanel>
+                </DockPanel>
+            </material:Card>
+
+            <material:Card DockPanel.Dock="Top" material:ShadowAssist.ShadowDepth="Depth1">
+                <DockPanel LastChildFill="True">
+                    <Button DockPanel.Dock="Bottom"
+                            Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
+                            Width="32"
+                            Height="32"
+                            Margin="0 10 0 10"
+                            Padding="0"
+                            Click="{s:Action OnAddAxis}"
+                            IsEnabled="{Binding SelectedDevice.IsDefault, Converter={StaticResource NotConverter}}">
+                        <material:PackIcon Width="24"
+                                           Height="24"
+                                           Kind="Plus"/>
+                    </Button>
+
+                    <DataGrid DockPanel.Dock="Top"
+                              ItemsSource="{Binding SelectedDevice.Axes}"
+                              MaxHeight="400"
+                              material:DataGridAssist.CellPadding="10 5 10 5"
+                              AutoGenerateColumns="False"
+                              Background="{DynamicResource MaterialDesignCardBackground}"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              CanUserReorderColumns="False"
+                              CanUserResizeColumns="True"
+                              CanUserResizeRows="False"
+                              CanUserSortColumns="False"
+                              VerticalScrollBarVisibility="Visible">
+                        <DataGrid.Resources>
+                            <ui:BindingProxy x:Key="SelectedDeviceProxy" DataContext="{Binding SelectedDevice}"/>
+                            <Style x:Key="IsDefaultCellStyle"
+                                   BasedOn="{StaticResource MaterialDesignDataGridCell}"
+                                   TargetType="{x:Type DataGridCell}">
+                                <Setter Property="IsEnabled" Value="{Binding DataContext.IsDefault, Converter={StaticResource NotConverter}, Source={StaticResource SelectedDeviceProxy}}"/>
+                            </Style>
+                        </DataGrid.Resources>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Binding="{Binding Name}"
+                                                CellStyle="{StaticResource IsDefaultCellStyle}"
+                                                EditingElementStyle="{StaticResource MaterialDesignDataGridTextColumnEditingStyle}"
+                                                ElementStyle="{StaticResource MaterialDesignDataGridTextColumnStyle}"
+                                                Header="Name"/>
+
+                            <DataGridTextColumn Binding="{Binding FriendlyName}"
+                                                CellStyle="{StaticResource IsDefaultCellStyle}"
+                                                EditingElementStyle="{StaticResource MaterialDesignDataGridTextColumnEditingStyle}"
+                                                ElementStyle="{StaticResource MaterialDesignDataGridTextColumnStyle}"
+                                                Header="Friendly name"/>
+
+                            <DataGridTextColumn Binding="{Binding FunscriptNames, Converter={StaticResource FunscriptNameListToStringConverter}}"
+                                                CellStyle="{StaticResource IsDefaultCellStyle}"
+                                                EditingElementStyle="{StaticResource MaterialDesignDataGridTextColumnEditingStyle}"
+                                                ElementStyle="{StaticResource MaterialDesignDataGridTextColumnStyle}"
+                                                Header="Funscript names">
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style BasedOn="{StaticResource MaterialDesignDataGridColumnHeader}" TargetType="{x:Type DataGridColumnHeader}">
+                                        <Setter Property="ContentTemplate">
+                                            <Setter.Value>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Margin="0 0 3 0" Text="{Binding}"/>
+
+                                                        <material:ColorZone DockPanel.Dock="Right"
+                                                                            Width="14"
+                                                                            Height="14"
+                                                                            VerticalAlignment="Center"
+                                                                            Background="{DynamicResource PrimaryHueLightBrush}"
+                                                                            CornerRadius="7"
+                                                                            Mode="Custom">
+                                                            <material:ColorZone.ToolTip>
+                                                                <TextBlock>
+                                                                    List of names used to match funscript files to this axis<LineBreak/>
+                                                                    The files should be in&#x20;<Italic>&lt;video name&gt;.&lt;funscript name&gt;.funscript</Italic>
+                                                                    format<LineBreak/>
+                                                                    Use * to match files without a funscript name<LineBreak/>
+                                                                    Names are processed in order from left to right</TextBlock>
+                                                            </material:ColorZone.ToolTip>
+                                                            <material:PackIcon Width="10"
+                                                                               Height="10"
+                                                                               HorizontalAlignment="Center"
+                                                                               VerticalAlignment="Center"
+                                                                               Foreground="Black"
+                                                                               Kind="QuestionMark"/>
+                                                        </material:ColorZone>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                            </DataGridTextColumn>
+
+                            <metro:DataGridNumericUpDownColumn Binding="{Binding DefaultValue}"
+                                                               CellStyle="{StaticResource IsDefaultCellStyle}"
+                                                               Header="Default value"
+                                                               HideUpDownButtons="True"
+                                                               Maximum="1"
+                                                               Minimum="0"
+                                                               StringFormat="{}{0:P0}"/>
+
+                            <DataGridCheckBoxColumn Binding="{Binding Enabled, UpdateSourceTrigger=PropertyChanged}"
+                                                    EditingElementStyle="{StaticResource MaterialDesignDataGridCheckBoxColumnEditingStyle}"
+                                                    ElementStyle="{StaticResource MaterialDesignDataGridCheckBoxColumnStyle}"
+                                                    Header="Enabled"/>
+
+                            <DataGridTemplateColumn CellStyle="{StaticResource IsDefaultCellStyle}">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button DockPanel.Dock="Right"
+                                                Style="{StaticResource MaterialDesignFlatButton}"
+                                                Width="20"
+                                                Height="20"
+                                                Margin="0"
+                                                Padding="0"
+                                                material:RippleAssist.Feedback="{DynamicResource MaterialDesignErrorBrush}"
+                                                Click="{s:Action OnDeleteAxis}"
+                                                Foreground="{DynamicResource MaterialDesignErrorBrush}"
+                                                ToolTip="Remove">
+                                            <material:PackIcon Kind="Delete"/>
+                                        </Button>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </material:Card>
+        </DockPanel>
+    </Grid>
+</UserControl>

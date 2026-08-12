@@ -1,0 +1,265 @@
+﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.OutputTarget;
+using MultiFunPlayer.Property;
+using MultiFunPlayer.Shortcut;
+using Newtonsoft.Json.Linq;
+using NLog;
+using Stylet;
+
+namespace MultiFunPlayer.UI.Controls.ViewModels;
+
+internal sealed class OutputTargetViewModel : Conductor<IOutputTarget>.Collection.OneActive, IHandle<SettingsMessage>, IDisposable
+{
+    private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
+
+    private readonly IShortcutManager _shortcutManager;
+    private readonly IPropertyManager _propertyManager;
+    private readonly IOutputTargetFactory _outputTargetFactory;
+    private Task _task;
+    private CancellationTokenSource _cancellationSource;
+    private Dictionary<IOutputTarget, SemaphoreSlim> _semaphores;
+    private SemaphoreSlim _scanIntervalSemaphore;
+
+    public List<Type> AvailableOutputTargetTypes { get; }
+
+    public bool ContentVisible { get; set; }
+    public int ScanDelay { get; set; } = 2500;
+    public int ScanInterval { get; set; } = 5000;
+
+    public OutputTargetViewModel(IShortcutManager shortcutManager, IPropertyManager propertyManager, IEventAggregator eventAggregator, IOutputTargetFactory outputTargetFactory)
+    {
+        _shortcutManager = shortcutManager;
+        _propertyManager = propertyManager;
+        _outputTargetFactory = outputTargetFactory;
+        eventAggregator.Subscribe(this);
+
+        _semaphores = [];
+        _cancellationSource = new CancellationTokenSource();
+        _scanIntervalSemaphore = new SemaphoreSlim(0);
+
+        AvailableOutputTargetTypes = ReflectionUtils.FindImplementations<IOutputTarget>().ToList();
+    }
+
+    public void AddItem(Type type)
+    {
+        var usedIndices = Items.Where(x => x.GetType() == type)
+                               .Select(x => x.InstanceIndex)
+                               .ToList();
+
+        var index = 0;
+        for (; ; index++)
+            if (!usedIndices.Contains(index))
+                break;
+
+        Logger.Trace("Adding new output [Index: {0}, Type: {1}]", index, type);
+        var instance = _outputTargetFactory.CreateOutputTarget(type, index);
+        if (instance == null)
+            return;
+
+        AddItem(instance);
+    }
+
+    private void AddItem(IOutputTarget target)
+    {
+        Items.Add(target);
+        ActivateItem(target);
+        _semaphores.Add(target, new SemaphoreSlim(1, 1));
+
+        Logger.Debug("Added new output \"{0}\"", target.Identifier);
+        RegisterActions(_shortcutManager, target);
+        RegisterProperties(_propertyManager, target);
+    }
+
+    public async void RemoveItem(IOutputTarget target)
+    {
+        Logger.Debug("Removing output \"{0}\"", target.Identifier);
+
+        CloseItem(target);
+
+        var semaphore = _semaphores[target];
+        _semaphores.Remove(target);
+
+        var token = _cancellationSource.Token;
+        await semaphore.WaitAsync(token);
+
+        await target.WaitForIdle(token);
+        if (target.Status == ConnectionStatus.Connected)
+        {
+            await target.DisconnectAsync();
+            await target.WaitForDisconnect(token);
+        }
+
+        UnregisterActions(_shortcutManager, target);
+        UnregisterProperties(_propertyManager, target);
+
+        semaphore.Release();
+        semaphore.Dispose();
+        target.Dispose();
+    }
+
+    protected override void OnViewLoaded()
+    {
+        base.OnViewLoaded();
+        _task ??= Task.Run(() => ScanAsync(_cancellationSource.Token));
+    }
+
+    public void Handle(SettingsMessage message)
+    {
+        if (message.Action == SettingsAction.Saving)
+        {
+            if (!message.Settings.EnsureContainsObjects("OutputTarget")
+             || !message.Settings.TryGetObject(out var settings, "OutputTarget"))
+                return;
+
+            settings[nameof(ContentVisible)] = ContentVisible;
+            settings[nameof(ScanDelay)] = ScanDelay;
+            settings[nameof(ScanInterval)] = ScanInterval;
+            settings[nameof(ActiveItem)] = ActiveItem?.Identifier;
+            settings[nameof(Items)] = JArray.FromObject(Items);
+        }
+        else if (message.Action == SettingsAction.Loading)
+        {
+            if (!message.Settings.TryGetObject(out var settings, "OutputTarget"))
+                return;
+
+            if (settings.TryGetValue<bool>(nameof(ContentVisible), out var contentVisible))
+                ContentVisible = contentVisible;
+            if (settings.TryGetValue<int>(nameof(ScanDelay), out var scanDelay))
+                ScanDelay = scanDelay;
+            if (settings.TryGetValue<int>(nameof(ScanInterval), out var scanInterval))
+                ScanInterval = scanInterval;
+
+            if (settings.TryGetValue<List<IOutputTarget>>(nameof(Items), out var items))
+            {
+                foreach (var item in items)
+                {
+                    var isDuplicate = Items.Any(x => x.GetType() == item.GetType() && x.InstanceIndex == item.InstanceIndex);
+                    if (isDuplicate)
+                    {
+                        Logger.Warn("Index \"{0}\" is already used for type \"{1}\"", item.InstanceIndex, item.GetType());
+                        continue;
+                    }
+
+                    AddItem(item);
+                }
+            }
+
+            if (settings.TryGetValue<string>(nameof(ActiveItem), out var selectedItem))
+                ChangeActiveItem(Items.FirstOrDefault(x => string.Equals(x.Identifier, selectedItem, StringComparison.Ordinal)) ?? Items.FirstOrDefault(), closePrevious: false);
+        }
+    }
+
+    public async Task ToggleConnectAsync(IOutputTarget target)
+    {
+        var token = _cancellationSource.Token;
+        if (target == null)
+            return;
+
+        await _semaphores[target].WaitAsync(token);
+        if (target.Status == ConnectionStatus.Connected)
+            await DisconnectAsync(target, token);
+        else if (target.Status == ConnectionStatus.Disconnected)
+            await ConnectAsync(target, ConnectionType.Manual, token);
+
+        _semaphores[target].Release();
+    }
+
+    private async Task ConnectAsync(IOutputTarget target, ConnectionType connectionType, CancellationToken token)
+    {
+        _scanIntervalSemaphore.Release();
+        await target.ConnectAsync(connectionType);
+        await target.WaitForIdle(token);
+    }
+
+    private async Task DisconnectAsync(IOutputTarget target, CancellationToken token)
+    {
+        _scanIntervalSemaphore.Release();
+        await target.DisconnectAsync();
+        await target.WaitForDisconnect(token);
+    }
+
+    private async Task ScanAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(ScanDelay, token);
+            while (!token.IsCancellationRequested)
+            {
+                foreach (var target in Items.ToList())
+                {
+                    if (!target.AutoConnectEnabled)
+                        continue;
+
+                    await _semaphores[target].WaitAsync(token);
+                    if (target.Status != ConnectionStatus.Connected)
+                        await ConnectAsync(target, ConnectionType.AutoConnect, token);
+
+                    _semaphores[target].Release();
+                }
+
+                while (await _scanIntervalSemaphore.WaitAsync(ScanInterval, token));
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void RegisterActions(IShortcutManager s, IOutputTarget target)
+    {
+        var token = _cancellationSource.Token;
+        target.RegisterActions(s);
+
+        #region Connection
+        s.RegisterAction($"{target.Identifier}::Connection::Toggle", async () => await ToggleConnectAsync(target));
+        s.RegisterAction($"{target.Identifier}::Connection::Connect", async () =>
+        {
+            await _semaphores[target].WaitAsync(token);
+            if (target.Status == ConnectionStatus.Disconnected)
+                await ConnectAsync(target, ConnectionType.Manual, token);
+            _semaphores[target].Release();
+        });
+        s.RegisterAction($"{target.Identifier}::Connection::Disconnect", async () =>
+        {
+            await _semaphores[target].WaitAsync(token);
+            if (target.Status == ConnectionStatus.Connected)
+                await DisconnectAsync(target, token);
+            _semaphores[target].Release();
+        });
+        #endregion
+    }
+
+    private void UnregisterActions(IShortcutManager s, IOutputTarget target)
+    {
+        target.UnregisterActions(s);
+        s.UnregisterAction($"{target.Identifier}::Connection::Toggle");
+        s.UnregisterAction($"{target.Identifier}::Connection::Connect");
+        s.UnregisterAction($"{target.Identifier}::Connection::Disconnect");
+    }
+
+    private void RegisterProperties(IPropertyManager p, IOutputTarget target) => target.RegisterProperties(p);
+    private void UnregisterProperties(IPropertyManager p, IOutputTarget target) => target.UnregisterProperties(p);
+
+    private void Dispose(bool disposing)
+    {
+        _cancellationSource?.Cancel();
+
+        _task?.GetAwaiter().GetResult();
+
+        if (_semaphores != null)
+            foreach (var (_, semaphore) in _semaphores)
+                semaphore.Dispose();
+
+        _cancellationSource?.Dispose();
+        _scanIntervalSemaphore?.Dispose();
+
+        _semaphores = null;
+        _task = null;
+        _cancellationSource = null;
+        _scanIntervalSemaphore = null;
+    }
+
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+}

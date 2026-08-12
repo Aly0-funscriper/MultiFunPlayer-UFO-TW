@@ -1,0 +1,145 @@
+<UserControl x:Class="MultiFunPlayer.MotionProvider.Views.CustomCurveMotionProvider"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:common="clr-namespace:MultiFunPlayer.Common"
+             xmlns:controls="clr-namespace:MultiFunPlayer.UI.Controls"
+             xmlns:converters="clr-namespace:MultiFunPlayer.UI.Converters"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:material="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:metro="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:s="https://github.com/canton7/Stylet"
+             xmlns:ui="clr-namespace:MultiFunPlayer.UI"
+             d:DesignHeight="450"
+             d:DesignWidth="800"
+             x:ClassModifier="internal"
+             mc:Ignorable="d">
+    <UserControl.Resources>
+        <converters:AutoToolTipValueToPercentConverter x:Key="AutoToolTipValueToPercentConverter"/>
+    </UserControl.Resources>
+    <StackPanel>
+        <DockPanel LastChildFill="True">
+            <TextBlock DockPanel.Dock="Left"
+                       Margin="0 0 10 0"
+                       VerticalAlignment="Center"
+                       Text="Interpolation type:"/>
+
+            <ComboBox DockPanel.Dock="Left"
+                      ItemsSource="{Binding Source={ui:EnumBindingSource {x:Type common:InterpolationType}}}"
+                      SelectedItem="{Binding InterpolationType}"/>
+        </DockPanel>
+
+        <DockPanel LastChildFill="True">
+            <TextBlock DockPanel.Dock="Left"
+                       Margin="0 0 10 0"
+                       VerticalAlignment="Center"
+                       Text="Duration:"/>
+
+            <metro:NumericUpDown Maximum="60"
+                                 Minimum="1"
+                                 StringFormat="{}{0}s"
+                                 Value="{Binding Duration}"/>
+        </DockPanel>
+
+        <DockPanel Margin="0 0 0 10" LastChildFill="True">
+            <TextBlock DockPanel.Dock="Left"
+                       Margin="0 0 10 0"
+                       VerticalAlignment="Center"
+                       Text="Speed:"/>
+
+            <metro:NumericUpDown Style="{StaticResource MaterialDesignNumericUpDown}"
+                                 HideUpDownButtons="False"
+                                 Interval="0.01"
+                                 Minimum="0.01"
+                                 StringFormat="P0"
+                                 Validation.ErrorTemplate="{x:Null}"
+                                 Value="{Binding Speed}"/>
+        </DockPanel>
+
+        <DockPanel Margin="0 -5 0 10" LastChildFill="False">
+            <TextBlock DockPanel.Dock="Left"
+                       Margin="0 0 10 0"
+                       VerticalAlignment="Center"
+                       Text="Loop:"/>
+
+            <CheckBox DockPanel.Dock="Left"
+                      Margin="0 0 10 0"
+                      IsChecked="{Binding IsLooping}"/>
+
+            <Button DockPanel.Dock="Left"
+                    Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
+                    Width="20"
+                    Height="20"
+                    VerticalAlignment="Center"
+                    Command="{s:Action Reset}"
+                    ToolTip="Reset">
+                <material:PackIcon Width="16"
+                                   Height="16"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Kind="Refresh"/>
+            </Button>
+
+            <StackPanel DockPanel.Dock="Right"
+                        Orientation="Horizontal"
+                        Visibility="{Binding IsLooping, Converter={StaticResource InvertedBooleanToVisibilityConverter}}">
+
+                <TextBlock Margin="0 0 10 0"
+                           VerticalAlignment="Center"
+                           Text="Sync on end:"/>
+
+                <CheckBox Margin="0 0 10 0" IsChecked="{Binding SyncOnEnd}"/>
+            </StackPanel>
+
+        </DockPanel>
+
+        <DockPanel LastChildFill="True">
+            <TextBlock DockPanel.Dock="Left"
+                       Margin="0 0 10 0"
+                       VerticalAlignment="Center"
+                       Text="Range:"/>
+
+            <metro:RangeSlider DockPanel.Dock="Right"
+                               Style="{StaticResource MaterialDesignCompactRangeSlider}"
+                               HorizontalAlignment="Stretch"
+                               AutoToolTipPlacement="TopLeft"
+                               AutoToolTipPrecision="2"
+                               LowerValue="{Binding Minimum, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                               Maximum="1.00"
+                               MinRange="0.01"
+                               MinRangeWidth="10"
+                               Minimum="0.00"
+                               UpperValue="{Binding Maximum, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                               UseLayoutRounding="False">
+                <metro:RangeSlider.AutoToolTipLowerValueTemplate>
+                    <DataTemplate>
+                        <TextBlock HorizontalAlignment="Right" Text="{Binding Converter={StaticResource AutoToolTipValueToPercentConverter}}"/>
+                    </DataTemplate>
+                </metro:RangeSlider.AutoToolTipLowerValueTemplate>
+                <metro:RangeSlider.AutoToolTipUpperValueTemplate>
+                    <DataTemplate>
+                        <TextBlock HorizontalAlignment="Right" Text="{Binding Converter={StaticResource AutoToolTipValueToPercentConverter}}"/>
+                    </DataTemplate>
+                </metro:RangeSlider.AutoToolTipUpperValueTemplate>
+                <metro:RangeSlider.AutoToolTipRangeValuesTemplate>
+                    <DataTemplate DataType="{x:Type metro:RangeSliderAutoTooltipValues}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding LowerValue, Converter={StaticResource AutoToolTipValueToPercentConverter}}"/>
+                            <TextBlock Text=" - "/>
+                            <TextBlock Text="{Binding UpperValue, Converter={StaticResource AutoToolTipValueToPercentConverter}}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </metro:RangeSlider.AutoToolTipRangeValuesTemplate>
+            </metro:RangeSlider>
+        </DockPanel>
+
+        <controls:DraggablePointCanvas Height="150"
+                                       Margin="0 20 0 0"
+                                       InterpolationType="{Binding InterpolationType}"
+                                       IsTilingEnabled="{Binding IsLooping}"
+                                       Points="{Binding Points}"
+                                       PopupFormat="{}{0:F1}s, {1:P0}"
+                                       ScrubberPosition="{Binding Time}"
+                                       Viewport="{Binding Viewport}"/>
+    </StackPanel>
+</UserControl>

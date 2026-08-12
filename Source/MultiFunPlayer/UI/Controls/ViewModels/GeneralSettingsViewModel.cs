@@ -1,0 +1,148 @@
+﻿using MultiFunPlayer.Common;
+using MultiFunPlayer.Settings;
+using Newtonsoft.Json.Linq;
+using NLog;
+using Stylet;
+using System.Diagnostics;
+using System.Windows;
+using System.Windows.Controls;
+
+namespace MultiFunPlayer.UI.Controls.ViewModels;
+
+internal enum ErrorDisplayType
+{
+    None,
+    Dialog,
+    Snackbar
+}
+
+internal sealed class GeneralSettingsViewModel : Screen, IHandle<SettingsMessage>, IHandle<WindowCreatedMessage>
+{
+    private static Logger Logger { get; } = LogManager.GetCurrentClassLogger();
+
+    private readonly INewtonsoftJsonLoggerManager _newtonsoftLoggerManager;
+    private readonly IStyletLoggerManager _styletLoggerManager;
+
+    public IReadOnlyCollection<LogLevel> LogLevels { get; }
+
+    public LogLevel LogLevel { get; set; } = LogLevel.Info;
+    public bool EnableUILogging { get; set; } = false;
+    public bool EnableJsonLogging { get; set; } = false;
+    public bool AllowWindowResize { get; set; } = false;
+    public bool AlwaysOnTop { get; set; } = false;
+    public ErrorDisplayType ErrorDisplayType { get; set; } = ErrorDisplayType.Snackbar;
+    public Orientation AppOrientation { get; set; } = Orientation.Vertical;
+    public bool RememberWindowLocation { get; set; } = false;
+
+    public GeneralSettingsViewModel(INewtonsoftJsonLoggerManager newtonsoftLoggerManager, IStyletLoggerManager styletLoggerManager, IEventAggregator eventAggregator)
+    {
+        DisplayName = "General";
+        eventAggregator.Subscribe(this);
+
+        _newtonsoftLoggerManager = newtonsoftLoggerManager;
+        _styletLoggerManager = styletLoggerManager;
+        LogLevels = [.. LogLevel.AllLevels];
+    }
+
+    public void OnAlwaysOnTopChanged()
+    {
+        var window = Application.Current.MainWindow;
+        if (window == null)
+            return;
+
+        window.Topmost = AlwaysOnTop;
+    }
+
+    public void OnEnableJsonLoggingChanged() => _newtonsoftLoggerManager.IsEnabled = EnableJsonLogging;
+    public void OnEnableUILoggingChanged() => _styletLoggerManager.IsEnabled = EnableUILogging;
+
+    public void OnAllowWindowResizeChanged()
+    {
+        var window = Application.Current.MainWindow;
+        if (window == null)
+            return;
+
+        if (AllowWindowResize)
+        {
+            window.ResizeMode = ResizeMode.CanResize;
+            window.SizeToContent = SizeToContent.Manual;
+        }
+        else
+        {
+            window.ResizeMode = ResizeMode.CanMinimize;
+            window.SizeToContent = SizeToContent.Height;
+        }
+    }
+
+    public void OnAppOrientationChanged()
+    {
+        var window = Application.Current.MainWindow;
+        if (window == null)
+            return;
+
+        if (AppOrientation == Orientation.Vertical)
+            window.Width = window.MinWidth = window.MaxWidth = 600;
+        else if (AppOrientation == Orientation.Horizontal)
+            window.Width = window.MinWidth = window.MaxWidth = 1200;
+    }
+
+    public void OnLogLevelChanged()
+    {
+        if (LogLevel == null)
+            return;
+
+        Logger.Info("Changing log level to \"{0}\"", LogLevel.Name);
+
+        LogManager.Configuration.FindRuleByName("application")?.SetLoggingLevels(LogLevel, LogLevel.Fatal);
+        if (Debugger.IsAttached)
+        {
+            var debugLogLevel = LogLevel.FromOrdinal(Math.Min(LogLevel.Ordinal, 1));
+            LogManager.Configuration.FindRuleByName("debug")?.SetLoggingLevels(debugLogLevel, LogLevel.Fatal);
+        }
+
+        LogManager.ReconfigExistingLoggers();
+    }
+
+    public void Handle(SettingsMessage message)
+    {
+        var settings = message.Settings;
+
+        if (message.Action == SettingsAction.Saving)
+        {
+            settings[nameof(AlwaysOnTop)] = AlwaysOnTop;
+            settings[nameof(ErrorDisplayType)] = JToken.FromObject(ErrorDisplayType);
+            settings[nameof(LogLevel)] = JToken.FromObject(LogLevel ?? LogLevel.Info);
+            settings[nameof(EnableUILogging)] = EnableUILogging;
+            settings[nameof(EnableJsonLogging)] = EnableJsonLogging;
+            settings[nameof(AllowWindowResize)] = AllowWindowResize;
+            settings[nameof(AppOrientation)] = JToken.FromObject(AppOrientation);
+            settings[nameof(RememberWindowLocation)] = RememberWindowLocation;
+        }
+        else if (message.Action == SettingsAction.Loading)
+        {
+            if (settings.TryGetValue<bool>(nameof(AlwaysOnTop), out var alwaysOnTop))
+                AlwaysOnTop = alwaysOnTop;
+            if (settings.TryGetValue<ErrorDisplayType>(nameof(ErrorDisplayType), out var errorDisplayType))
+                ErrorDisplayType = errorDisplayType;
+            if (settings.TryGetValue<LogLevel>(nameof(LogLevel), out var logLevel))
+                LogLevel = logLevel;
+            if (settings.TryGetValue<bool>(nameof(EnableUILogging), out var enableUILogging))
+                EnableUILogging = enableUILogging;
+            if (settings.TryGetValue<bool>(nameof(EnableJsonLogging), out var enableJsonLogging))
+                EnableJsonLogging = enableJsonLogging;
+            if (message.Settings.TryGetValue<bool>(nameof(AllowWindowResize), out var allowWindowResize))
+                AllowWindowResize = allowWindowResize;
+            if (settings.TryGetValue<Orientation>(nameof(AppOrientation), out var appOrientation))
+                AppOrientation = appOrientation;
+            if (settings.TryGetValue<bool>(nameof(RememberWindowLocation), out var rememberWindowLocation))
+                RememberWindowLocation = rememberWindowLocation;
+        }
+    }
+
+    public void Handle(WindowCreatedMessage message)
+    {
+        OnAlwaysOnTopChanged();
+        OnAllowWindowResizeChanged();
+        OnAppOrientationChanged();
+    }
+}
