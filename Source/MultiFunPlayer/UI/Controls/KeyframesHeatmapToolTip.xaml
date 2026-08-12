@@ -1,0 +1,72 @@
+﻿<UserControl x:Class="MultiFunPlayer.UI.Controls.KeyframesHeatmapToolTip"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:material="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             d:DesignHeight="450"
+             d:DesignWidth="800"
+             x:ClassModifier="internal"
+             mc:Ignorable="d">
+    <material:Card material:ShadowAssist.ShadowDepth="Depth2">
+        <DockPanel Margin="5">
+            <material:Card DockPanel.Dock="Top"
+                           Margin="0 0 0 5"
+                           ClipContent="False"
+                           Visibility="{Binding EnablePreview, Converter={StaticResource BooleanToVisibilityConverter}, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type UserControl}}}">
+                <material:Card.Background>
+                    <DrawingBrush Stretch="None"
+                                  TileMode="Tile"
+                                  Viewport="4 8 20 20"
+                                  ViewportUnits="Absolute">
+                        <DrawingBrush.Drawing>
+                            <DrawingGroup>
+                                <GeometryDrawing Brush="{DynamicResource MaterialDesignPrimaryCheckerboxBrush}">
+                                    <GeometryDrawing.Geometry>
+                                        <RectangleGeometry Rect="0 0 20 20"/>
+                                    </GeometryDrawing.Geometry>
+                                </GeometryDrawing>
+
+                                <GeometryDrawing Brush="{DynamicResource MaterialDesignSecondaryCheckerboxBrush}">
+                                    <GeometryDrawing.Geometry>
+                                        <GeometryGroup>
+                                            <RectangleGeometry Rect="0 0 10 10"/>
+                                            <RectangleGeometry Rect="10 10 10 10"/>
+                                        </GeometryGroup>
+                                    </GeometryDrawing.Geometry>
+                                </GeometryDrawing>
+                            </DrawingGroup>
+                        </DrawingBrush.Drawing>
+                    </DrawingBrush>
+                </material:Card.Background>
+
+                <Canvas Width="{Binding CanvasWidth, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type UserControl}}}" Height="{Binding CanvasHeight, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type UserControl}}}">
+                    <Polyline Points="{Binding Points, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type UserControl}}}"
+                              Stroke="{DynamicResource MaterialDesignBody}"
+                              StrokeLineJoin="Round"
+                              StrokeThickness="1.5"/>
+                    <Border Canvas.Left="{Binding ScrubberPosition, TargetNullValue=-100, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type UserControl}}}"
+                            Width="4"
+                            Height="{Binding CanvasHeight, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type UserControl}}}"
+                            Background="{DynamicResource MaterialDesignCardBackground}"
+                            BorderBrush="{DynamicResource MaterialDesignBody}"
+                            BorderThickness="1 0 1 0"
+                            SnapsToDevicePixels="True"
+                            Visibility="{Binding ScrubberPosition, Converter={StaticResource NullableToVisibilityConverter}, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type UserControl}}}">
+                        <Border.RenderTransform>
+                            <TranslateTransform X="-2"/>
+                        </Border.RenderTransform>
+                    </Border>
+                </Canvas>
+            </material:Card>
+
+            <Grid DockPanel.Dock="Top">
+                <TextBlock Text="{Binding PreviewAxis, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type UserControl}}}"
+                           TextAlignment="Left"
+                           Visibility="{Binding EnablePreview, Converter={StaticResource BooleanToVisibilityConverter}, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type UserControl}}}"/>
+
+                <TextBlock Text="{Binding PositionTime, StringFormat={}{0:hh\\:mm\\:ss\\.fff}, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type UserControl}}}" TextAlignment="Center"/>
+            </Grid>
+        </DockPanel>
+    </material:Card>
+</UserControl>

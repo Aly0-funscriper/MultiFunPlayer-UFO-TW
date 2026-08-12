@@ -1,0 +1,6 @@
+﻿namespace MultiFunPlayer.Input;
+
+public interface IInputGestureDescriptor;
+public interface IButtonInputGestureDescriptor : IInputGestureDescriptor;
+public interface IToggleInputGestureDescriptor : IInputGestureDescriptor;
+public interface IAxisInputGestureDescriptor : IInputGestureDescriptor;

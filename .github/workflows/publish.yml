@@ -1,0 +1,54 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - '*'
+      
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+          fetch-depth: 0
+    - name: Setup Dotnet
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    - name: Setup GitVersion
+      uses: gittools/actions/gitversion/setup@v1.1.1
+      with:
+        versionSpec: '5.x'
+    - name: Run GitVersion
+      id:   gitversion
+      uses: gittools/actions/gitversion/execute@v1.1.1
+    - name: Install Dependencies
+      run: dotnet restore
+    - name: Test
+      run: dotnet test --configuration Release
+    - name: Build Framework Dependent
+      run: dotnet publish --self-contained false --configuration Release --property:PublishDir=.\bin\Release\win-x64\publish\framework-dependent
+    - name: Build Self Contained
+      run: dotnet publish --self-contained true --configuration Release --property:PublishDir=.\bin\Release\win-x64\publish\self-contained
+    - name: Setup NetBeauty
+      run: dotnet tool install --global nulastudio.nbeauty
+    - name: Run NetBeauty
+      run: nbeauty2.exe .\Source\MultiFunPlayer\bin\Release\win-x64\publish\self-contained\ Bin
+    - name: Pack Framework Dependent
+      run: 7z a MultiFunPlayer-${{ steps.gitversion.outputs.semVer }}.zip .\Source\MultiFunPlayer\bin\Release\win-x64\publish\framework-dependent\*
+    - name: Pack Self Contained
+      run: 7z a MultiFunPlayer-${{ steps.gitversion.outputs.semVer }}-SelfContained.$(dotnet --version).zip .\Source\MultiFunPlayer\bin\Release\win-x64\publish\self-contained\*
+    - name: Create Release
+      id: create-release
+      uses: ncipollo/release-action@v1
+      with:
+        draft: false
+        prerelease: false
+        artifactErrorsFailBuild: true
+        name: MultiFunPlayer v${{ steps.gitversion.outputs.semVer }}
+        artifacts: MultiFunPlayer-${{ steps.gitversion.outputs.semVer }}*.zip
