@@ -83,12 +83,16 @@ internal sealed class DeviceSettingsPreprocessor : JsonEditor, ISettingsPreproce
 
         if (!TryGetProperty(settings, "SelectedDevice", out var selectedDevice))
         {
-            AddPropertyByName(settings, "SelectedDevice", devices.Last["Name"].ToString(), out selectedDevice);
+            var defaultDevice = devices.OfType<JObject>().LastOrDefault(d => d["IsDefault"]?.ToObject<bool>() == true)
+                             ?? devices.Last as JObject;
+            AddPropertyByName(settings, "SelectedDevice", defaultDevice["Name"].ToString(), out selectedDevice);
             dirty = true;
         }
         else if (string.IsNullOrWhiteSpace(selectedDevice.ToString()))
         {
-            SetProperty(selectedDevice, devices.Last["Name"].ToString());
+            var defaultDevice = devices.OfType<JObject>().LastOrDefault(d => d["IsDefault"]?.ToObject<bool>() == true)
+                             ?? devices.Last as JObject;
+            SetProperty(selectedDevice, defaultDevice["Name"].ToString());
             dirty = true;
         }
 
@@ -102,7 +106,32 @@ internal sealed class DeviceSettingsPreprocessor : JsonEditor, ISettingsPreproce
         }
 
         Logger.Debug("Initializing from device \"{0}\"", device["Name"].ToString());
-        DeviceAxis.InitializeFromDevice(device.ToObject<DeviceSettings>());
+        var selectedDeviceSettings = device.ToObject<DeviceSettings>();
+        EnsureUfoTwAxes(selectedDeviceSettings);
+        DeviceAxis.InitializeFromDevice(selectedDeviceSettings);
         return dirty;
+    }
+
+    private static void EnsureUfoTwAxes(DeviceSettings device)
+    {
+        if (!device.Axes.Any(a => string.Equals(a.Name, "Lnip", StringComparison.OrdinalIgnoreCase)))
+            device.Axes.Add(new DeviceAxisSettings()
+            {
+                Name = "Lnip",
+                FriendlyName = "Left nipple",
+                FunscriptNames = ["Lnip"],
+                Enabled = true,
+                DefaultValue = 0.5,
+            });
+
+        if (!device.Axes.Any(a => string.Equals(a.Name, "Rnip", StringComparison.OrdinalIgnoreCase)))
+            device.Axes.Add(new DeviceAxisSettings()
+            {
+                Name = "Rnip",
+                FriendlyName = "Right nipple",
+                FunscriptNames = ["Rnip"],
+                Enabled = true,
+                DefaultValue = 0.5,
+            });
     }
 }

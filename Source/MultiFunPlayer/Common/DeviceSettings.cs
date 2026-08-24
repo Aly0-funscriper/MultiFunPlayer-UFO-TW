@@ -36,7 +36,9 @@ internal sealed class DeviceSettings : PropertyChangedBase
                 new() { Name = "R2", FriendlyName = "Pitch", FunscriptNames = ["pitch", "R2"], Enabled = true, DefaultValue = 0.5, },
                 new() { Name = "V0", FriendlyName = "Vibrate", FunscriptNames = ["vib", "V0"], Enabled = false, DefaultValue = 0, },
                 new() { Name = "V1", FriendlyName = "Pump", FunscriptNames = ["pump", "lube", "V1"], Enabled = false, DefaultValue = 0, },
-                new() { Name = "L3", FriendlyName = "Suction", FunscriptNames = ["suck", "valve", "L3"], Enabled = false, DefaultValue = 0, }
+                new() { Name = "L3", FriendlyName = "Suction", FunscriptNames = ["suck", "valve", "L3"], Enabled = false, DefaultValue = 0, },
+                new() { Name = "Lnip", FriendlyName = "Left nipple", FunscriptNames = ["Lnip"], Enabled = true, DefaultValue = 0.5, },
+                new() { Name = "Rnip", FriendlyName = "Right nipple", FunscriptNames = ["Rnip"], Enabled = true, DefaultValue = 0.5, }
             ]
         },
         new()
@@ -56,7 +58,20 @@ internal sealed class DeviceSettings : PropertyChangedBase
                 new() { Name = "V1", FriendlyName = "Pump", FunscriptNames = ["pump", "V1"], Enabled = false, DefaultValue = 0, },
                 new() { Name = "A0", FriendlyName = "Valve", FunscriptNames = ["valve", "A0"], Enabled = false, DefaultValue = 0, },
                 new() { Name = "A1", FriendlyName = "Suction", FunscriptNames = ["suck", "A1"], Enabled = false, DefaultValue = 0, },
-                new() { Name = "A2", FriendlyName = "Lube", FunscriptNames = ["lube", "A2"], Enabled = false, DefaultValue = 0, }
+                new() { Name = "A2", FriendlyName = "Lube", FunscriptNames = ["lube", "A2"], Enabled = false, DefaultValue = 0, },
+                new() { Name = "Lnip", FriendlyName = "Left nipple", FunscriptNames = ["Lnip"], Enabled = true, DefaultValue = 0.5, },
+                new() { Name = "Rnip", FriendlyName = "Right nipple", FunscriptNames = ["Rnip"], Enabled = true, DefaultValue = 0.5, }
+            ]
+        },
+        new()
+        {
+            Name = "UFO-TW",
+            OutputPrecision = 3,
+            IsDefault = false,
+            Axes =
+            [
+                new() { Name = "Lnip", FriendlyName = "Left nipple", FunscriptNames = ["Lnip"], Enabled = true, DefaultValue = 0.5, },
+                new() { Name = "Rnip", FriendlyName = "Right nipple", FunscriptNames = ["Rnip"], Enabled = true, DefaultValue = 0.5, }
             ]
         }
     ];

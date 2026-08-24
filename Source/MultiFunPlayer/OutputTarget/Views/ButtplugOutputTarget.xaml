@@ -228,10 +228,23 @@
             <material:Card Margin="0 20 0 0" material:ShadowAssist.ShadowDepth="Depth1">
                 <Expander material:ExpanderAssist.HorizontalHeaderPadding="24 6 6 6">
                     <Expander.Header>
-                        <TextBlock FontSize="14"
-                                   FontWeight="Bold"
-                                   Text="Device map"
-                                   Typography.Capitals="AllSmallCaps"/>
+                        <DockPanel LastChildFill="False">
+                            <TextBlock DockPanel.Dock="Left"
+                                       FontSize="14"
+                                       FontWeight="Bold"
+                                       Text="Device map"
+                                       Typography.Capitals="AllSmallCaps"/>
+                            <Button DockPanel.Dock="Right"
+                                    Margin="12 0 0 0"
+                                    Padding="2"
+                                    Click="{s:Action OnSettingsAddUfoTw}"
+                                    IsEnabled="{Binding CanAddUfoTw}"
+                                    ToolTip="Auto-map UFO-TW left/right rotate actuators">
+                                <material:PackIcon Width="18"
+                                                   Height="18"
+                                                   Kind="AutoFix"/>
+                            </Button>
+                        </DockPanel>
                     </Expander.Header>
                     <StackPanel Margin="10 0 10 10">
                         <ListBox DockPanel.Dock="Top"
