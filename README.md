@@ -10,9 +10,7 @@
 
 MultiFunPlayer synchronizes your devices with video files using scripts. The player has the ability to synchronize multiple devices with multiple scripts at the same time enabling enhanced experience.
 
-This fork also includes native UFO-TW BLE support for genuine UFO-TW devices and ESP32-compatible firmware. See the [UFO-TW bilingual user guide](Docs/UFO-TW.md) for setup, axis names, script naming, and pause behavior.
-
-Prebuilt UFO-TW BLE + USB packages are available from this fork's [GitHub Releases](https://github.com/Aly0-funscriper/MultiFunPlayer-UFO-TW/releases).
+This fork adds a unified native UFO-TW output for genuine BLE devices and ESP32-compatible BLE/USB firmware, including `Lnip` and `Rnip` funscript loading. See the [UFO-TW guide](Docs/UFO-TW.md). Ready-to-run Windows packages are available from this fork's [Releases](https://github.com/Aly0-funscriper/MultiFunPlayer-UFO-TW/releases/latest).
 
 # Downloads
 

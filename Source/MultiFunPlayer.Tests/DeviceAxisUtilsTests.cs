@@ -18,8 +18,6 @@ public class DeviceAxisUtilsTests
                 new() { Name = "R0", FriendlyName = "Twist", FunscriptNames = ["twist", "R0", "yaw"], Enabled = true, DefaultValue = 0.5, },
                 new() { Name = "R1", FriendlyName = "Roll", FunscriptNames = ["roll", "R1"], Enabled = true, DefaultValue = 0.5, },
                 new() { Name = "R2", FriendlyName = "Pitch", FunscriptNames = ["pitch", "R2"], Enabled = true, DefaultValue = 0.5, },
-                new() { Name = "Lnip", FriendlyName = "Left nipple", FunscriptNames = ["Lnip"], Enabled = true, DefaultValue = 0.5, },
-                new() { Name = "Rnip", FriendlyName = "Right nipple", FunscriptNames = ["Rnip"], Enabled = true, DefaultValue = 0.5, },
             ]
         });
     }
@@ -27,8 +25,6 @@ public class DeviceAxisUtilsTests
     public static IEnumerable<object[]> ScriptNameAndExpectedAxes => [
         ["name.funscript", new[] { DeviceAxis.Parse("L0") }],
         ["name.pitch.funscript", new[] { DeviceAxis.Parse("R2") }],
-        ["name.Lnip.funscript", new[] { DeviceAxis.Parse("Lnip") }],
-        ["name.Rnip.funscript", new[] { DeviceAxis.Parse("Rnip") }],
         ["name.unknown.funscript", new[] { DeviceAxis.Parse("L0") }],
     ];
 
@@ -68,28 +64,6 @@ public class DeviceAxisUtilsTests
     {
         var baseName = DeviceAxisUtils.GetBaseNameWithExtension(fileName);
         Assert.Equal(expectedBaseName, baseName);
-    }
-
-    [Fact]
-    public void CustomNippleAxesAreAcceptedButNotSerializedAsTCode()
-    {
-        var left = DeviceAxis.Parse("lnip");
-        var right = DeviceAxis.Parse("Rnip");
-
-        Assert.NotNull(left);
-        Assert.NotNull(right);
-        Assert.False(left.IsTCodeAxis);
-        Assert.False(right.IsTCodeAxis);
-        Assert.Equal(string.Empty, DeviceAxis.ToString(left, 0.5));
-        Assert.Equal(string.Empty, DeviceAxis.ToString(left, 0.5, 50));
-
-        var output = DeviceAxis.ToString([
-            new KeyValuePair<DeviceAxis, double>(left, 0.5),
-            new KeyValuePair<DeviceAxis, double>(DeviceAxis.Parse("L0"), 0.5)
-        ]);
-
-        Assert.DoesNotContain("Lnip", output);
-        Assert.Contains("L0", output);
     }
 
     public static IEnumerable<object[]> DeviceAxisScriptNamesMediaNameAndExpectedNames => [

@@ -2,6 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows10.0.22621.0</TargetFramework>
+    <WindowsSdkPackageVersion>10.0.22621.57</WindowsSdkPackageVersion>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <UseWPF>true</UseWPF>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
@@ -13,7 +14,7 @@
     <ImplicitUsings>true</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
-  
+
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
@@ -21,6 +22,7 @@
   
   <ItemGroup>
     <InternalsVisibleTo Include="$(AssemblyName).Tests" />
+    <Compile Remove="GitVersionInformation.cs" Condition="'$(EnableGitVersion)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>
@@ -33,7 +35,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="GitVersion.MsBuild" Version="5.*">
+    <PackageReference Include="GitVersion.MsBuild" Version="5.*" Condition="'$(EnableGitVersion)' == 'true'">
       <PrivateAssets>All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="MahApps.Metro" Version="2.4.9" />

@@ -54,9 +54,6 @@ internal sealed class ButtplugOutputTarget : AsyncAbstractOutputTarget
     public ActuatorType? SelectedActuatorType { get; set; }
     public uint? SelectedActuatorIndex { get; set; }
     public bool CanAddSelected => SelectedDevice != null && SelectedDeviceAxis != null && SelectedActuatorType != null && SelectedActuatorIndex != null;
-    public bool CanAddUfoTw => FindUfoTwDevice() != null
-                            && DeviceAxis.Parse("Lnip") != null
-                            && DeviceAxis.Parse("Rnip") != null;
 
     public ObservableConcurrentCollection<ButtplugDeviceSettings> DeviceSettings { get; }
 
@@ -66,11 +63,7 @@ internal sealed class ButtplugOutputTarget : AsyncAbstractOutputTarget
         AvailableDevices = [];
         DeviceSettings = [];
 
-        AvailableDevices.CollectionChanged += (s, e) =>
-        {
-            DeviceSettings.Refresh();
-            NotifyOfPropertyChange(nameof(CanAddUfoTw));
-        };
+        AvailableDevices.CollectionChanged += (s, e) => DeviceSettings.Refresh();
 
         _scanSemaphore = new SemaphoreSlim(0, 1);
     }
@@ -106,8 +99,6 @@ internal sealed class ButtplugOutputTarget : AsyncAbstractOutputTarget
             AvailableDevices.Remove(device);
             if (device == SelectedDevice)
                 SelectedDevice = null;
-
-            NotifyOfPropertyChange(nameof(CanAddUfoTw));
         }
 
         void OnDeviceAdded(ButtplugDevice device)
@@ -115,8 +106,6 @@ internal sealed class ButtplugOutputTarget : AsyncAbstractOutputTarget
             Logger.Info($"Device added: \"{device.Name}\"");
 
             AvailableDevices.Add(device);
-
-            NotifyOfPropertyChange(nameof(CanAddUfoTw));
 
             var syncAxes = GetSettingsForDevice(device)
                                 .GroupBy(s => s.SourceAxis)
@@ -460,65 +449,6 @@ internal sealed class ButtplugOutputTarget : AsyncAbstractOutputTarget
         SelectedDeviceAxis = null;
         SelectedActuatorIndex = null;
         SelectedActuatorType = null;
-    }
-
-    public void OnSettingsAddUfoTw()
-    {
-        var device = FindUfoTwDevice();
-        var leftAxis = DeviceAxis.Parse("Lnip");
-        var rightAxis = DeviceAxis.Parse("Rnip");
-        if (device == null || leftAxis == null || rightAxis == null)
-            return;
-
-        var rotateActuators = device.GetActuators(ActuatorType.Rotate)
-                                    .OrderBy(a => a.Index)
-                                    .Take(2)
-                                    .ToArray();
-        if (rotateActuators.Length < 2)
-        {
-            Logger.Warn("UFO-TW device \"{0}\" does not expose two rotate actuators", device.Name);
-            return;
-        }
-
-        var mappings = new[]
-        {
-            (Axis: leftAxis, ActuatorIndex: rotateActuators[0].Index),
-            (Axis: rightAxis, ActuatorIndex: rotateActuators[1].Index)
-        };
-
-        foreach (var mapping in mappings)
-        {
-            if (GetSettingsForDevice(device).Any(s => s.SourceAxis == mapping.Axis))
-                continue;
-
-            DeviceSettings.Add(new()
-            {
-                DeviceName = device.Name,
-                DeviceIndex = device.Index,
-                SourceAxis = mapping.Axis,
-                ActuatorIndex = mapping.ActuatorIndex,
-                ActuatorType = ActuatorType.Rotate,
-                UpdateType = DeviceAxisUpdateType.FixedUpdate
-            });
-        }
-
-        EventAggregator.Publish(new SyncRequestMessage([leftAxis, rightAxis]));
-        NotifyOfPropertyChange(nameof(AvailableActuatorIndices));
-        NotifyOfPropertyChange(nameof(CanAddUfoTw));
-    }
-
-    private ButtplugDevice FindUfoTwDevice()
-        => AvailableDevices.FirstOrDefault(IsUfoTwDevice);
-
-    private static bool IsUfoTwDevice(ButtplugDevice device)
-    {
-        if (device == null)
-            return false;
-
-        var name = device.Name ?? string.Empty;
-        var hasUfoName = name.Contains("UFO", StringComparison.OrdinalIgnoreCase)
-                      || name.Contains("Vorze", StringComparison.OrdinalIgnoreCase);
-        return hasUfoName && device.GetActuators(ActuatorType.Rotate).Count() >= 2;
     }
 
     public void OnSettingsDelete(object sender, EventArgs e)

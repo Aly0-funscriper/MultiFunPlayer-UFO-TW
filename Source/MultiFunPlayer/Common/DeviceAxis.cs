@@ -16,7 +16,6 @@ public sealed class DeviceAxis
     public double DefaultValue { get; }
     public string FriendlyName { get; }
     public IReadOnlyList<string> FunscriptNames { get; }
-    public bool IsTCodeAxis { get; }
 
     public override string ToString() => Name;
     public override int GetHashCode() => _id;
@@ -29,7 +28,6 @@ public sealed class DeviceAxis
         DefaultValue = settings.DefaultValue;
         FriendlyName = settings.FriendlyName;
         FunscriptNames = settings.FunscriptNames;
-        IsTCodeAxis = Regex.IsMatch(Name, "^[A-Z][0-9]$", RegexOptions.CultureInvariant);
     }
 
     private static int _count;
@@ -45,15 +43,13 @@ public sealed class DeviceAxis
         return axis != null;
     }
 
-    public static string ToString(DeviceAxis axis, double value)
-        => axis.IsTCodeAxis ? $"{axis}{string.Format(null, _outputFormat, value * _outputMaximum)}" : string.Empty;
-    public static string ToString(DeviceAxis axis, double value, double interval)
-        => axis.IsTCodeAxis ? $"{ToString(axis, value)}I{(int)Math.Floor(interval + 0.75)}" : string.Empty;
+    public static string ToString(DeviceAxis axis, double value) => $"{axis}{string.Format(null, _outputFormat, value * _outputMaximum)}";
+    public static string ToString(DeviceAxis axis, double value, double interval) => $"{ToString(axis, value)}I{(int)Math.Floor(interval + 0.75)}";
 
     public static string ToString(IEnumerable<KeyValuePair<DeviceAxis, double>> values)
-        => $"{values.Where(x => x.Key.IsTCodeAxis).Aggregate(string.Empty, (s, x) => $"{s} {ToString(x.Key, x.Value)}")}\n".TrimStart();
+        => $"{values.Aggregate(string.Empty, (s, x) => $"{s} {ToString(x.Key, x.Value)}")}\n".TrimStart();
     public static string ToString(IEnumerable<KeyValuePair<DeviceAxis, double>> values, double interval)
-        => $"{values.Where(x => x.Key.IsTCodeAxis).Aggregate(string.Empty, (s, x) => $"{s} {ToString(x.Key, x.Value, interval)}")}\n".TrimStart();
+        => $"{values.Aggregate(string.Empty, (s, x) => $"{s} {ToString(x.Key, x.Value, interval)}")}\n".TrimStart();
 
     public static bool IsValueDirty(double value, double lastValue)
         => Math.Abs(lastValue - value) * (_outputMaximum + 1) >= 1 || (double.IsFinite(value) ^ double.IsFinite(lastValue));
@@ -68,11 +64,11 @@ public sealed class DeviceAxis
         _outputMaximum = (int)(Math.Pow(10, device.OutputPrecision) - 1);
         _outputFormat = CompositeFormat.Parse($"{{0:{new string('0', device.OutputPrecision)}}}");
 
-        All = device.Axes.Where(s => s.Enabled && Regex.IsMatch(s.Name, "^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.CultureInvariant))
+        All = device.Axes.Where(s => s.Enabled && Regex.IsMatch(s.Name, "^(?:[A-Z][0-9]|Lnip|Rnip)$", RegexOptions.IgnoreCase))
                          .DistinctBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
                          .Select(s => new DeviceAxis(s))
                          .ToImmutableArray();
 
-        _axisNameMap = All.ToFrozenDictionary(a => a.Name, a => a, StringComparer.OrdinalIgnoreCase);
+        _axisNameMap = All.ToFrozenDictionary(a => a.Name, a => a);
     }
 }
