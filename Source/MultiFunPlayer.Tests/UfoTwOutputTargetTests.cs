@@ -38,6 +38,12 @@ public sealed class UfoTwOutputTargetTests
         => Assert.Equal(UfoBleProtocol.Genuine,
             UfoBleConnection.ResolveProtocol(UfoBleProtocol.Compatibility, useGenuineProtocol: true));
 
+    [Theory]
+    [InlineData(false, "Compatibility firmware")]
+    [InlineData(true, "Genuine UFO-TW")]
+    public void ProtocolSwitchExposesUnclippedStatusLabel(bool useGenuineProtocol, string expected)
+        => Assert.Equal(expected, UfoBleConnection.GetProtocolDisplayName(useGenuineProtocol));
+
     [Fact]
     public void MigrationAddsUfoAxesToExistingCustomProfiles()
     {

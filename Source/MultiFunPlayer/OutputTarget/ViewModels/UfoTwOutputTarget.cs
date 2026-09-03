@@ -53,6 +53,7 @@ internal sealed class UfoTwOutputTarget : AsyncAbstractOutputTarget, IHandle<Med
     public IReadOnlyList<UfoAxisControl> AxisControls { get; }
     public string ScanStatus { get; set; } = "Press Scan. Only verified UFO-TW advertisements are shown.";
     public string SelectedDeviceId { get; set; }
+    public string ProtocolDisplayName => UfoBleConnection.GetProtocolDisplayName(UseGenuineProtocol);
 
     public bool UseGenuineProtocol
     {
@@ -62,6 +63,7 @@ internal sealed class UfoTwOutputTarget : AsyncAbstractOutputTarget, IHandle<Med
             if (_useGenuineProtocol == value) return;
             _useGenuineProtocol = value;
             NotifyOfPropertyChange(nameof(UseGenuineProtocol));
+            NotifyOfPropertyChange(nameof(ProtocolDisplayName));
         }
     }
 
@@ -576,6 +578,9 @@ internal sealed class UfoBleConnection : IUfoConnection
         => useGenuineProtocol
             ? detectedProtocol == UfoBleProtocol.GenuineLegacy ? UfoBleProtocol.GenuineLegacy : UfoBleProtocol.Genuine
             : UfoBleProtocol.Compatibility;
+
+    internal static string GetProtocolDisplayName(bool useGenuineProtocol)
+        => useGenuineProtocol ? "Genuine UFO-TW" : "Compatibility firmware";
 
     private static bool IsKnownService(Guid uuid) => uuid == CompatibilityService || uuid == GenuineService || uuid == GenuineLegacyService;
     internal static bool IsExactUfoName(string name)
