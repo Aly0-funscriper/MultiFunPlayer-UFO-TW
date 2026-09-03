@@ -31,6 +31,7 @@ internal sealed class UfoTwOutputTarget : AsyncAbstractOutputTarget, IHandle<Med
     private ConnectionStatus _status;
     private UfoConnectionMethod _selectedMethod = UfoConnectionMethod.BluetoothLe;
     private UfoDevice _selectedDevice;
+    private bool _useGenuineProtocol;
 
     public override ConnectionStatus Status
     {
@@ -52,6 +53,17 @@ internal sealed class UfoTwOutputTarget : AsyncAbstractOutputTarget, IHandle<Med
     public IReadOnlyList<UfoAxisControl> AxisControls { get; }
     public string ScanStatus { get; set; } = "Press Scan. Only verified UFO-TW advertisements are shown.";
     public string SelectedDeviceId { get; set; }
+
+    public bool UseGenuineProtocol
+    {
+        get => _useGenuineProtocol;
+        set
+        {
+            if (_useGenuineProtocol == value) return;
+            _useGenuineProtocol = value;
+            NotifyOfPropertyChange(nameof(UseGenuineProtocol));
+        }
+    }
 
     public UfoConnectionMethod SelectedMethod
     {
@@ -262,7 +274,9 @@ internal sealed class UfoTwOutputTarget : AsyncAbstractOutputTarget, IHandle<Med
         return MathUtils.Lerp(settings.Minimum, settings.Maximum, GetValue(axis));
     }
 
-    private IUfoConnection CreateConnection() => SelectedMethod == UfoConnectionMethod.UsbSerial ? new UfoSerialConnection() : new UfoBleConnection();
+    private IUfoConnection CreateConnection() => SelectedMethod == UfoConnectionMethod.UsbSerial
+        ? new UfoSerialConnection()
+        : new UfoBleConnection(UseGenuineProtocol);
     private static bool IsUfoAxis(DeviceAxis axis) => axis.Name.Equals("Lnip", StringComparison.OrdinalIgnoreCase) || axis.Name.Equals("Rnip", StringComparison.OrdinalIgnoreCase);
     private void SetScanStatus(string status) => Execute.OnUIThread(() =>
     {
@@ -277,12 +291,15 @@ internal sealed class UfoTwOutputTarget : AsyncAbstractOutputTarget, IHandle<Med
         {
             settings[nameof(SelectedMethod)] = SelectedMethod.Id;
             settings[nameof(SelectedDeviceId)] = SelectedDeviceId;
+            settings[nameof(UseGenuineProtocol)] = UseGenuineProtocol;
         }
         else if (action == SettingsAction.Loading)
         {
             if (settings.TryGetValue<string>(nameof(SelectedMethod), out var method))
                 _selectedMethod = ConnectionMethods.FirstOrDefault(x => x.Id == method || x.DisplayName == method) ?? UfoConnectionMethod.BluetoothLe;
             if (settings.TryGetValue<string>(nameof(SelectedDeviceId), out var id)) SelectedDeviceId = id;
+            if (settings.TryGetValue<bool>(nameof(UseGenuineProtocol), out var useGenuineProtocol))
+                _useGenuineProtocol = useGenuineProtocol;
         }
     }
 
@@ -413,7 +430,11 @@ internal sealed class UfoBleConnection : IUfoConnection
     private GattCharacteristic _characteristic;
     private GattSession _session;
     private UfoBleProtocol _protocol;
+    private readonly bool _useGenuineProtocol;
     public bool NeedsHeartbeat => false;
+
+    public UfoBleConnection(bool useGenuineProtocol = false)
+        => _useGenuineProtocol = useGenuineProtocol;
 
     public async Task<IReadOnlyList<UfoDevice>> ScanAsync(CancellationToken token)
     {
@@ -466,7 +487,9 @@ internal sealed class UfoBleConnection : IUfoConnection
                 if (_device == null) throw new IOException("Windows could not open this BLE device");
                 var services = await WithTimeout(ct => _device.GetGattServicesAsync(BluetoothCacheMode.Uncached).AsTask(ct), token);
                 if (services.Status != GattCommunicationStatus.Success) throw new IOException($"GATT service enumeration returned {services.Status}");
-                (_service, _protocol) = FindService(services.Services);
+                var detectedProtocol = UfoBleProtocol.Compatibility;
+                (_service, detectedProtocol) = FindService(services.Services);
+                _protocol = ResolveProtocol(detectedProtocol, _useGenuineProtocol);
                 foreach (var other in services.Services) if (!ReferenceEquals(other, _service)) other.Dispose();
 
                 var characteristicId = _protocol == UfoBleProtocol.GenuineLegacy ? GenuineLegacyCharacteristic : CompatibilityCharacteristic;
@@ -548,6 +571,11 @@ internal sealed class UfoBleConnection : IUfoConnection
         }
         throw new IOException("No UFO-TW, compatibility, or XToys GATT service was found");
     }
+
+    internal static UfoBleProtocol ResolveProtocol(UfoBleProtocol detectedProtocol, bool useGenuineProtocol)
+        => useGenuineProtocol
+            ? detectedProtocol == UfoBleProtocol.GenuineLegacy ? UfoBleProtocol.GenuineLegacy : UfoBleProtocol.Genuine
+            : UfoBleProtocol.Compatibility;
 
     private static bool IsKnownService(Guid uuid) => uuid == CompatibilityService || uuid == GenuineService || uuid == GenuineLegacyService;
     internal static bool IsExactUfoName(string name)

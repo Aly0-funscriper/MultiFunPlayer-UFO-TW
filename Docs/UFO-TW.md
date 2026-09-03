@@ -23,10 +23,12 @@
 
 在输出区域点击 `+` 并添加 `UFO-TW`：
 
-1. 正版设备选择 BLE 与正版协议。
-2. ESP32 兼容板可选择 BLE 与兼容协议，或直接选择 USB 串口。
+1. 正版设备选择 BLE，并打开 `BLE protocol` 开关，使其显示 `Genuine UFO-TW`。
+2. ESP32 兼容板选择 BLE 时关闭该开关，使其显示 `Compatibility firmware`；也可以直接选择 USB 串口。
 3. 点击扫描/刷新后只显示名称或服务 UUID 符合 UFO-TW 的 BLE 设备。
 4. 连接成功前会验证 GATT 服务、可写特征和停止指令，错误设备不会被保留为 UFO-TW。
+
+协议开关只能在断开连接时修改，并会随 MFP 设置保存。USB 串口始终使用兼容固件协议，不受该开关影响。
 
 BLE 扫描最多 3 秒，完整连接设有 25 秒硬超时。ESP32 USB 串口会优先显示 Espressif 设备。
 
@@ -36,4 +38,4 @@ BLE 扫描最多 3 秒，完整连接设有 25 秒硬超时。ESP32 USB 串口�
 
 ## English summary
 
-This fork adds one native `UFO-TW` output window for genuine BLE, ESP32-compatible BLE, and ESP32 USB serial. It loads `video.Lnip.funscript` and `video.Rnip.funscript`, validates BLE candidates before accepting them, limits scanning to three seconds and connection attempts to 25 seconds, and stops both outputs while any supported player is paused.
+This fork adds one native `UFO-TW` output window for genuine BLE, ESP32-compatible BLE, and ESP32 USB serial. Select `Genuine UFO-TW` with the BLE protocol switch for an original device, or leave it at `Compatibility firmware` for an ESP32 board. It loads `video.Lnip.funscript` and `video.Rnip.funscript`, validates BLE candidates before accepting them, limits scanning to three seconds and connection attempts to 25 seconds, and stops both outputs while any supported player is paused.

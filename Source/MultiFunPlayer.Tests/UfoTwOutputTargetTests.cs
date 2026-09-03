@@ -34,6 +34,11 @@ public sealed class UfoTwOutputTargetTests
     }
 
     [Fact]
+    public void GenuineProtocolButtonOverridesAmbiguousCompatibilityService()
+        => Assert.Equal(UfoBleProtocol.Genuine,
+            UfoBleConnection.ResolveProtocol(UfoBleProtocol.Compatibility, useGenuineProtocol: true));
+
+    [Fact]
     public void MigrationAddsUfoAxesToExistingCustomProfiles()
     {
         var settings = JObject.Parse("""{"Devices":[{"Name":"Custom","Axes":[{"Name":"L0"}]}]}""");
