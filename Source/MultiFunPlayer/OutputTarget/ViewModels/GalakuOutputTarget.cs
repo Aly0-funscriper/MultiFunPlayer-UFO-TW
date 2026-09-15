@@ -123,7 +123,7 @@ internal sealed class GalakuOutputTarget : AsyncAbstractOutputTarget, IHandle<Me
     protected override async ValueTask<bool> OnConnectingAsync(ConnectionType connectionType)
     {
         if (DeviceAxis.Parse(AxisName) == null)
-            throw new OutputTargetException("The selected MFP device profile does not have the V0 (Vibrate) axis enabled. Enable V0 in the device settings first.");
+            throw new OutputTargetException("The selected MFP device profile does not have the V0 (Vibrate) axis enabled. Enable V0 in Settings > Device, then restart MultiFunPlayer.");
         if (SelectedDevice == null) await OnRefreshDevices();
         if (SelectedDevice == null) throw new OutputTargetException("No Galaku device was found");
         return true;

@@ -36,3 +36,25 @@ public sealed class GalakuOutputTargetTests
     public void BallVibratorHasFriendlyName()
         => Assert.Contains("Ball vibrator", GalakuProtocol.FriendlyName("K118"));
 }
+
+public sealed class GalakuMigrationTests
+{
+    [Fact]
+    public void MigrationEnablesExistingV0AndAddsMissingV0()
+    {
+        var settings = Newtonsoft.Json.Linq.JObject.Parse("""
+            {"Devices":[
+              {"Name":"TCode-0.3","Axes":[{"Name":"L0","Enabled":true},{"Name":"V0","Enabled":false}]},
+              {"Name":"Custom","Axes":[{"Name":"L0","Enabled":true}]}
+            ]}
+            """);
+        new MultiFunPlayer.Settings.Migrations.Migration0046().Migrate(settings);
+
+        foreach (var device in settings["Devices"]!)
+        {
+            var v0 = device["Axes"]!.Single(axis => (string)axis["Name"]! == "V0");
+            Assert.True((bool)v0["Enabled"]!);
+        }
+        Assert.Equal(46, (int)settings["ConfigVersion"]!);
+    }
+}
