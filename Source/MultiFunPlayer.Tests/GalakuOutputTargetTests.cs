@@ -58,3 +58,60 @@ public sealed class GalakuMigrationTests
         Assert.Equal(46, (int)settings["ConfigVersion"]!);
     }
 }
+
+public sealed class MizzzeeProtocolTests
+{
+    // Expected bytes produced by the 醉清风 app's own builder (ot()/Ce() in app-service.js).
+    [Fact]
+    public void IntensityMatchesAppVector()
+        => Assert.Equal(Convert.FromHexString("AA0806631E00000096CF"), MizzzeeProtocol.IntensityCommand(99, 30, 150));
+
+    [Fact]
+    public void ContinuousIntensityMatchesAppVector()
+        => Assert.Equal(Convert.FromHexString("AA080632000000FFFFE8"), MizzzeeProtocol.IntensityCommand(50, 0, 0xFFFF));
+
+    [Fact]
+    public void StopMatchesAppVector()
+        => Assert.Equal(Convert.FromHexString("AA08060000000000FFB7"), MizzzeeProtocol.StopCommand());
+
+    [Theory]
+    [InlineData(0.0, 0)]
+    [InlineData(0.5, 50)]
+    [InlineData(1.0, 99)]
+    [InlineData(2.0, 99)]
+    [InlineData(double.NaN, 0)]
+    public void ValueToIntensityIsClamped(double value, int expected)
+        => Assert.Equal(expected, MizzzeeProtocol.ToIntensity(value));
+
+    [Theory]
+    [InlineData("MIZZZEE MJHW SE", true)]
+    [InlineData("mizzzee_0010", true)]
+    [InlineData("K118", false)]
+    [InlineData("", false)]
+    public void ScanFilterAcceptsMizzzeeNames(string name, bool expected)
+        => Assert.Equal(expected, MizzzeeProtocol.IsKnownName(name));
+
+    [Fact]
+    public void StatusNotificationGivesBattery()
+        => Assert.Equal(90, MizzzeeProtocol.ParseBattery(Convert.FromHexString("AA01065A00000000000B")));
+
+    [Fact]
+    public void L0SpeedRisesAndDecays()
+    {
+        double last = double.NaN, level = 0;
+        Assert.Equal(0, VibratorProtocols.SpeedLevel(ref last, ref level, 0.0, 0.05, 2.0));
+        // moving 0.1 in 50 ms = 2 strokes/s = full scale
+        Assert.Equal(1.0, VibratorProtocols.SpeedLevel(ref last, ref level, 0.1, 0.05, 2.0), 3);
+        // stopped: decays by 1.5/s
+        Assert.Equal(0.925, VibratorProtocols.SpeedLevel(ref last, ref level, 0.1, 0.05, 2.0), 3);
+    }
+
+    [Theory]
+    [InlineData("D5:B8:83:CA:00:33", 0xD5B883CA0033UL)]
+    [InlineData("d5-b8-83-ca-00-33", 0xD5B883CA0033UL)]
+    public void ParsesMacAddress(string text, ulong expected)
+    {
+        Assert.True(VibratorScanner.TryParseAddress(text, out var address));
+        Assert.Equal(expected, address);
+    }
+}

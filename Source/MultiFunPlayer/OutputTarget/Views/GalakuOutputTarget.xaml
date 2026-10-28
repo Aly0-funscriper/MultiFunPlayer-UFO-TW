@@ -1,7 +1,7 @@
 <UserControl x:Class="MultiFunPlayer.OutputTarget.Views.GalakuOutputTarget" x:ClassModifier="internal"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:material="http://materialdesigninxaml.net/winfx/xaml/themes" xmlns:s="https://github.com/canton7/Stylet">
- <UserControl.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries><ResourceDictionary Source="UpdateContextTemplates.xaml"/></ResourceDictionary.MergedDictionaries></ResourceDictionary></UserControl.Resources>
+ <UserControl.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries><ResourceDictionary Source="UpdateContextTemplates.xaml"/></ResourceDictionary.MergedDictionaries><BooleanToVisibilityConverter x:Key="VibBoolToVisibility"/></ResourceDictionary></UserControl.Resources>
  <Expander Style="{StaticResource MaterialDesignToolBarExpander}" material:ExpanderAssist.HorizontalHeaderPadding="0 0 6 0" Background="{DynamicResource MaterialDesignToolBarBackground}" IsExpanded="{Binding DataContext.ContentVisible, RelativeSource={RelativeSource FindAncestor, AncestorLevel=2, AncestorType={x:Type UserControl}}}">
   <Expander.Header><DockPanel Height="36" LastChildFill="False">
    <Button DockPanel.Dock="Left" s:View.ActionTarget="{Binding DataContext.Parent, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type UserControl}}}" Command="{s:Action ToggleConnectAsync}" CommandParameter="{Binding}" IsEnabled="{Binding CanToggleConnect}"><Button.Style><Style BasedOn="{StaticResource MaterialDesignProgressToolBarButton}" TargetType="{x:Type ButtonBase}"><Setter Property="ToolTip" Value="Connect"/></Style></Button.Style><material:PackIcon Width="19" Height="19" Kind="Play"/></Button>
@@ -9,13 +9,28 @@
    <material:PopupBox DockPanel.Dock="Right" Style="{StaticResource MaterialDesignToolBarPopupBox}" PlacementMode="BottomAndAlignRightEdges" StaysOpen="True" ToolTip="Update settings"><material:PopupBox.ToggleContent><material:PackIcon Width="20" Height="20" Kind="TimerCogOutline"/></material:PopupBox.ToggleContent><StackPanel Width="250" Margin="10 0"><TextBlock FontWeight="Bold" Text="Fixed Update"/><ContentControl Content="{Binding UpdateContexts[FixedUpdate]}"/></StackPanel></material:PopupBox>
   </DockPanel></Expander.Header>
   <StackPanel Margin="20">
-   <DockPanel Margin="0 0 0 8" IsEnabled="{Binding IsDisconnected}"><TextBlock Width="110" VerticalAlignment="Center" Text="Galaku device:"/><ComboBox Width="285" DisplayMemberPath="DisplayName" ItemsSource="{Binding AvailableDevices}" SelectedItem="{Binding SelectedDevice}"/><Button Margin="8 0 0 0" Padding="10 2" HorizontalAlignment="Left" Style="{StaticResource MaterialDesignOutlinedButton}" Click="{s:Action OnRefreshDevices}"><StackPanel Orientation="Horizontal"><material:PackIcon Width="16" Height="16" Margin="0 0 5 0" Kind="Refresh"/><TextBlock Text="Scan"/></StackPanel></Button></DockPanel>
+   <!-- model -->
+   <DockPanel Margin="0 0 0 8" IsEnabled="{Binding IsDisconnected}"><TextBlock Width="110" VerticalAlignment="Center" Text="型号 Model:"/><ComboBox Width="285" HorizontalAlignment="Left" ItemsSource="{Binding ModelNames}" SelectedIndex="{Binding ModelIndex}"/></DockPanel>
+
+   <!-- device -->
+   <DockPanel Margin="0 0 0 8" IsEnabled="{Binding IsDisconnected}"><TextBlock Width="110" VerticalAlignment="Center" Text="Device:"/><ComboBox Width="285" DisplayMemberPath="DisplayName" ItemsSource="{Binding AvailableDevices}" SelectedItem="{Binding SelectedDevice}"/><Button Margin="8 0 0 0" Padding="10 2" HorizontalAlignment="Left" Style="{StaticResource MaterialDesignOutlinedButton}" Click="{s:Action OnRefreshDevices}"><StackPanel Orientation="Horizontal"><material:PackIcon Width="16" Height="16" Margin="0 0 5 0" Kind="Refresh"/><TextBlock Text="Scan"/></StackPanel></Button></DockPanel>
+   <DockPanel Margin="0 0 0 6" IsEnabled="{Binding IsDisconnected}"><TextBlock Width="110" VerticalAlignment="Center" Text="MAC (可选):"/><TextBox Width="285" material:HintAssist.Hint="D5:B8:83:CA:00:33  (扫不到时手动填写)" Text="{Binding ManualAddress, UpdateSourceTrigger=PropertyChanged}"/><Button Margin="8 0 0 0" Padding="10 2" HorizontalAlignment="Left" Style="{StaticResource MaterialDesignOutlinedButton}" Content="Add" Click="{s:Action OnAddManualAddress}"/></DockPanel>
    <TextBlock Margin="110 0 0 6" Foreground="{DynamicResource MaterialDesignBodyLight}" Text="{Binding ScanStatus}" TextWrapping="Wrap"/>
    <DockPanel Margin="0 0 0 14"><TextBlock Width="110" Text="Battery:"/><TextBlock Text="{Binding BatteryStatus}"/></DockPanel>
-   <TextBlock Margin="0 0 0 4" FontWeight="Bold" Text="Vibration (V0 axis) / motor test"/>
-   <TextBlock Margin="0 0 0 8" Foreground="{DynamicResource MaterialDesignBodyLight}" Text="The V0 script value (0-100%) is sent as vibration strength. TEST uses the slider instead of the script; 0% stops. Close Intiface / the phone app first — the toy accepts only one connection." TextWrapping="Wrap"/>
+
+   <!-- axis mapping -->
+   <TextBlock Margin="0 0 0 6" FontWeight="Bold" Text="轴映射 Axis mapping"/>
+   <DockPanel Margin="0 0 0 6"><TextBlock Width="110" VerticalAlignment="Center" Text="映射 L0:"/><CheckBox VerticalAlignment="Center" IsChecked="{Binding MapL0}" Content="用 L0（行程）代替 V0（震动）驱动"/></DockPanel>
+   <StackPanel Visibility="{Binding MapL0, Converter={StaticResource VibBoolToVisibility}}">
+    <DockPanel Margin="0 0 0 6"><TextBlock Width="110" VerticalAlignment="Center" Text="L0 方式:"/><ComboBox Width="200" HorizontalAlignment="Left" ItemsSource="{Binding L0ModeNames}" SelectedIndex="{Binding L0ModeIndex}"/></DockPanel>
+    <DockPanel Margin="0 0 0 6"><TextBlock Width="110" VerticalAlignment="Center" Text="满强度速度:"/><Slider Width="200" Minimum="0.5" Maximum="10" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding L0SpeedFullScale}"/><TextBlock Margin="8 0 0 0" VerticalAlignment="Center"><Run Text="{Binding L0SpeedFullScale, Mode=OneWay, StringFormat={}{0:0.0}}"/><Run Text=" 行程/秒 → 100%"/></TextBlock></DockPanel>
+   </StackPanel>
+
+   <!-- test -->
+   <TextBlock Margin="0 6 0 4" FontWeight="Bold" Text="Vibration / motor test"/>
+   <TextBlock Margin="0 0 0 8" Foreground="{DynamicResource MaterialDesignBodyLight}" Text="The selected axis (V0 or L0) is sent as vibration strength. TEST uses the slider instead of the script; 0% stops. Close Intiface / the phone app (醉清风) first — the toy accepts only one connection." TextWrapping="Wrap"/>
    <DockPanel Margin="0 0 0 5">
-    <ToggleButton DockPanel.Dock="Left" Width="48" Height="22" Padding="0" Content="V0" IsChecked="{Binding AxisEnabled}"/>
+    <ToggleButton DockPanel.Dock="Left" Width="48" Height="22" Padding="0" Content="{Binding SourceAxisName}" IsChecked="{Binding AxisEnabled}"/>
     <ToggleButton DockPanel.Dock="Left" Margin="5 0" Padding="7 0" Content="TEST" IsChecked="{Binding TestEnabled}" IsEnabled="{Binding AxisEnabled}"/>
     <Button DockPanel.Dock="Right" Width="44" Height="22" Padding="0" Content="0%" Click="{s:Action ResetTest}"/>
     <TextBlock DockPanel.Dock="Right" Width="45" VerticalAlignment="Center" TextAlignment="Right" Text="{Binding TestValue, StringFormat={}{0:P0}}"/>
